@@ -12,10 +12,6 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  # jetli/trunk-action still ships as a Node-20 action (no newer release). Opt it
-  # (and any other JS action) into the Node-24 runtime now — Node 24 becomes the
-  # default on 2026-06-16 anyway — so the deprecation warning is cleared.
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-pages:
@@ -37,10 +33,15 @@ jobs:
           cache-on-failure: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
+      # Install Trunk from its official release binary (rather than
+      # jetli/trunk-action, which still ships as a Node-20 action) — keeps the
+      # workflow free of deprecation warnings.
       - name: Install Trunk
-        uses: jetli/trunk-action@v0.5.1
-        with:
-          version: "latest"
+        run: |
+          set -euo pipefail
+          curl -fsSL https://github.com/trunk-rs/trunk/releases/download/v0.21.14/trunk-x86_64-unknown-linux-gnu.tar.gz \
+            | tar -xz -C "$HOME/.cargo/bin"
+          trunk --version
 
       - name: Install Task
         uses: go-task/setup-task@v2
