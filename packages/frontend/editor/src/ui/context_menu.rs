@@ -84,9 +84,7 @@ fn items_for(target: ContextTarget) -> Vec<Dom> {
                     }),
                 ];
             }
-            let looping = controller()
-                .clip_looping(track, clip)
-                .unwrap_or(false);
+            let looping = controller().clip_looping(track, clip).unwrap_or(false);
             vec![
                 menu_item(if looping { "Loop: on" } else { "Loop: off" }, move || {
                     let c = controller();

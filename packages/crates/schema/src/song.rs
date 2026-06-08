@@ -257,7 +257,11 @@ pub fn parse_smf(bytes: &[u8]) -> Result<Song, String> {
             }
         }
     }
-    tempo_changes.sort_by(|a, b| a.beat.partial_cmp(&b.beat).unwrap_or(std::cmp::Ordering::Equal));
+    tempo_changes.sort_by(|a, b| {
+        a.beat
+            .partial_cmp(&b.beat)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     // Base tempo = the earliest change (default 120 if none).
     let bpm = tempo_changes.first().map(|c| c.bpm).unwrap_or(120.0);
     // Only keep a map if the tempo actually varies.
@@ -313,8 +317,11 @@ pub fn parse_smf(bytes: &[u8]) -> Result<Song, String> {
             if st.events.is_empty() {
                 continue;
             }
-            st.events
-                .sort_by(|a, b| a.start.partial_cmp(&b.start).unwrap_or(std::cmp::Ordering::Equal));
+            st.events.sort_by(|a, b| {
+                a.start
+                    .partial_cmp(&b.start)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
             let label = match (name.is_empty(), multi) {
                 (true, _) => format!("ch {}", ch + 1),
                 (false, true) => format!("{name} (ch {})", ch + 1),

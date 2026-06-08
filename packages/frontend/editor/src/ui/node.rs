@@ -71,12 +71,14 @@ pub fn render(node: Rc<EditorNode>) -> Dom {
     let (in_names, out_names) = match &*kind {
         NodeKind::Sample(sr) => controller().sample_port_names(sr.sample),
         // Sequencer outputs are labelled by their sound / lane / zone.
-        NodeKind::NoteSequencer(s) => {
-            (Vec::new(), s.outputs.iter().map(|o| o.label.clone()).collect())
-        }
-        NodeKind::ControlSequencer(s) => {
-            (Vec::new(), s.lanes.iter().map(|l| l.label.clone()).collect())
-        }
+        NodeKind::NoteSequencer(s) => (
+            Vec::new(),
+            s.outputs.iter().map(|o| o.label.clone()).collect(),
+        ),
+        NodeKind::ControlSequencer(s) => (
+            Vec::new(),
+            s.lanes.iter().map(|l| l.label.clone()).collect(),
+        ),
         _ => (Vec::new(), Vec::new()),
     };
     // A Sound-reference node can be triggered: its first input port is the

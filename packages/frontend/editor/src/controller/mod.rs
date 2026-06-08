@@ -399,7 +399,9 @@ impl EditorController {
 
     /// Add a new empty sample of the active view's kind and switch to it.
     pub fn add_sample(&self) {
-        self.dispatch(EditorCommand::AddSample { kind: self.view.get() });
+        self.dispatch(EditorCommand::AddSample {
+            kind: self.view.get(),
+        });
     }
     fn add_sample_impl(&self, kind: awsm_audio_schema::SampleKind) {
         self.commit_active();
@@ -583,8 +585,7 @@ impl EditorController {
             .borrow()
             .iter()
             .filter(|s| {
-                s.sample.id != except
-                    && s.sample.kind == awsm_audio_schema::SampleKind::Sound
+                s.sample.id != except && s.sample.kind == awsm_audio_schema::SampleKind::Sound
             })
             .map(|s| (s.sample.id, s.sample.name.clone()))
             .collect()
@@ -598,7 +599,11 @@ impl EditorController {
     /// Add a boundary (inlet/outlet) node near the viewport center.
     pub fn add_boundary(&self, port: BoundaryPort) {
         let (cx, cy) = self.world_center();
-        self.dispatch(EditorCommand::AddBoundary { port, x: cx - 50.0, y: cy - 28.0 });
+        self.dispatch(EditorCommand::AddBoundary {
+            port,
+            x: cx - 50.0,
+            y: cy - 28.0,
+        });
     }
 
     /// Add a boundary node at a specific world position (e.g. a palette drop).
@@ -683,12 +688,16 @@ impl EditorController {
         let (x, y) = (wx - 86.0, wy - 28.0);
         match item {
             PaletteDrag::Node(kind) => self.dispatch(EditorCommand::AddNode { kind: *kind, x, y }),
-            PaletteDrag::Inlet => {
-                self.dispatch(EditorCommand::AddBoundary { port: BoundaryPort::Inlet, x, y })
-            }
-            PaletteDrag::Outlet => {
-                self.dispatch(EditorCommand::AddBoundary { port: BoundaryPort::Outlet, x, y })
-            }
+            PaletteDrag::Inlet => self.dispatch(EditorCommand::AddBoundary {
+                port: BoundaryPort::Inlet,
+                x,
+                y,
+            }),
+            PaletteDrag::Outlet => self.dispatch(EditorCommand::AddBoundary {
+                port: BoundaryPort::Outlet,
+                x,
+                y,
+            }),
             PaletteDrag::SampleRef => self.add_sample_ref_at(x, y),
         }
     }
@@ -1044,7 +1053,11 @@ impl EditorController {
 
     /// Set (or replace) a per-instance input value on a Sample-ref node.
     pub fn set_input_value(&self, node: NodeId, port: &str, value: f32) {
-        self.dispatch(EditorCommand::SetInputValue { node, port: port.to_string(), value });
+        self.dispatch(EditorCommand::SetInputValue {
+            node,
+            port: port.to_string(),
+            value,
+        });
     }
     fn set_input_value_impl(&self, node: NodeId, port: &str, value: f32) {
         use awsm_audio_schema::{InputValue, NodeKind, PortId};
@@ -1271,7 +1284,9 @@ impl EditorController {
             EditorCommand::AddSampleRef { sample, x, y } => self.add_sample_ref_impl(sample, x, y),
             EditorCommand::SetSampleRef { node, sample } => self.set_sample_ref_impl(node, sample),
             EditorCommand::RenameNode { id, label } => self.rename_node_impl(id, label),
-            EditorCommand::SetInputDefault { node, value } => self.set_input_default_impl(node, value),
+            EditorCommand::SetInputDefault { node, value } => {
+                self.set_input_default_impl(node, value)
+            }
             EditorCommand::SetInputValue { node, port, value } => {
                 self.set_input_value_impl(node, &port, value)
             }
@@ -1456,7 +1471,8 @@ impl EditorController {
         let emit = Self::source_emit(&pw.from.kind.borrow());
         if emit == awsm_audio_schema::Emit::Trigger {
             self.status.set(Some(
-                "A note trigger plays an instrument — wire it to a trigger inlet, not a parameter.".into(),
+                "A note trigger plays an instrument — wire it to a trigger inlet, not a parameter."
+                    .into(),
             ));
             return;
         }
@@ -1746,13 +1762,18 @@ impl EditorController {
         self.samples
             .borrow()
             .iter()
-            .find(|s| s.sample.id == active && s.sample.kind == awsm_audio_schema::SampleKind::Arrangement)
+            .find(|s| {
+                s.sample.id == active && s.sample.kind == awsm_audio_schema::SampleKind::Arrangement
+            })
             .map(|s| s.sample.arrangement.clone())
     }
 
     /// The bounced-buffer asset id of a Sound, if it has a (current or stale)
     /// bounce.
-    fn bounce_asset(&self, source: awsm_audio_schema::SampleId) -> Option<awsm_audio_schema::AssetId> {
+    fn bounce_asset(
+        &self,
+        source: awsm_audio_schema::SampleId,
+    ) -> Option<awsm_audio_schema::AssetId> {
         self.samples
             .borrow()
             .iter()
@@ -1767,7 +1788,10 @@ impl EditorController {
         let bufs = self.buffer_assets.borrow();
         let ba = bufs.get(&asset)?;
         match &ba.source {
-            AudioSource::Pcm { sample_rate, channels } => channels
+            AudioSource::Pcm {
+                sample_rate,
+                channels,
+            } => channels
                 .first()
                 .map(|c| c.len() as f64 / (*sample_rate as f64).max(1.0)),
             _ => None,
@@ -1798,7 +1822,11 @@ impl EditorController {
                     continue; // entirely before the scrub point
                 }
                 let lead = (seek - clip.start).max(0.0); // part of the clip before seek
-                let speed = if clip.speed > 0.0 { clip.speed as f64 } else { 1.0 };
+                let speed = if clip.speed > 0.0 {
+                    clip.speed as f64
+                } else {
+                    1.0
+                };
                 out.push(awsm_audio_player::AudioClipPart {
                     buffer,
                     start: (clip.start - seek).max(0.0),
@@ -1994,7 +2022,10 @@ impl EditorController {
     ) -> Vec<awsm_audio_schema::SoundOut> {
         use awsm_audio_schema::SoundOut;
         let carry = |key: &str, mk: &dyn Fn() -> SoundOut| -> SoundOut {
-            prev.iter().find(|o| o.key == key).cloned().unwrap_or_else(mk)
+            prev.iter()
+                .find(|o| o.key == key)
+                .cloned()
+                .unwrap_or_else(mk)
         };
         let mut outs = Vec::new();
         for (t, track) in song.tracks.iter().enumerate() {
@@ -2080,7 +2111,8 @@ impl EditorController {
                     return;
                 }
             };
-            let bytes = js_sys::Uint8Array::new(&buf.unchecked_into::<js_sys::ArrayBuffer>()).to_vec();
+            let bytes =
+                js_sys::Uint8Array::new(&buf.unchecked_into::<js_sys::ArrayBuffer>()).to_vec();
             match awsm_audio_schema::parse_smf(&bytes) {
                 Ok(song) => ctrl.set_song(node, song),
                 Err(e) => tracing::error!("MIDI parse failed: {e}"),
@@ -2178,8 +2210,11 @@ impl EditorController {
         self.edit_song(node, false, |ms| {
             if let Some(t) = ms.song.tracks.get_mut(track) {
                 t.events.push(ev);
-                t.events
-                    .sort_by(|a, b| a.start.partial_cmp(&b.start).unwrap_or(std::cmp::Ordering::Equal));
+                t.events.sort_by(|a, b| {
+                    a.start
+                        .partial_cmp(&b.start)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
             }
             ms.outputs = Self::outputs_for_song(ms.mode, &ms.song, &ms.outputs);
         });
@@ -2199,7 +2234,9 @@ impl EditorController {
                 if idx < t.events.len() {
                     t.events[idx] = ev;
                     t.events.sort_by(|a, b| {
-                        a.start.partial_cmp(&b.start).unwrap_or(std::cmp::Ordering::Equal)
+                        a.start
+                            .partial_cmp(&b.start)
+                            .unwrap_or(std::cmp::Ordering::Equal)
                     });
                 }
             }
@@ -2321,8 +2358,11 @@ impl EditorController {
                     value,
                     curve: awsm_audio_schema::Curve::Linear,
                 });
-                l.points
-                    .sort_by(|a, b| a.beat.partial_cmp(&b.beat).unwrap_or(std::cmp::Ordering::Equal));
+                l.points.sort_by(|a, b| {
+                    a.beat
+                        .partial_cmp(&b.beat)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
             }
         });
     }
@@ -2364,8 +2404,11 @@ impl EditorController {
         self.edit_control(node, false, |cs| {
             if let Some(l) = cs.lanes.get_mut(idx) {
                 let mut points = points;
-                points
-                    .sort_by(|a, b| a.beat.partial_cmp(&b.beat).unwrap_or(std::cmp::Ordering::Equal));
+                points.sort_by(|a, b| {
+                    a.beat
+                        .partial_cmp(&b.beat)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
                 l.points = points;
             }
         });
@@ -2383,7 +2426,8 @@ impl EditorController {
                     return;
                 }
             };
-            let bytes = js_sys::Uint8Array::new(&buf.unchecked_into::<js_sys::ArrayBuffer>()).to_vec();
+            let bytes =
+                js_sys::Uint8Array::new(&buf.unchecked_into::<js_sys::ArrayBuffer>()).to_vec();
             match awsm_audio_schema::parse_smf_control(&bytes) {
                 Ok(lanes) => {
                     if lanes.is_empty() {
@@ -2515,8 +2559,7 @@ impl EditorController {
         {
             let mut samples = self.samples.borrow_mut();
             let Some(st) = samples.iter_mut().find(|s| {
-                s.sample.id == active
-                    && s.sample.kind == awsm_audio_schema::SampleKind::Arrangement
+                s.sample.id == active && s.sample.kind == awsm_audio_schema::SampleKind::Arrangement
             }) else {
                 return;
             };
@@ -2572,7 +2615,12 @@ impl EditorController {
                 });
                 self.reschedule_arrangement();
             }
-            ArrangeOp::AddClip { track, start, source, length } => {
+            ArrangeOp::AddClip {
+                track,
+                start,
+                source,
+                length,
+            } => {
                 // Clip length: explicit (Draw tool) or the full bounce duration.
                 let full = self.bounce_duration(source).unwrap_or(1.0).max(0.05);
                 let length = length.map(|l| l.clamp(0.05, full)).unwrap_or(full);
@@ -2614,7 +2662,12 @@ impl EditorController {
                     }
                 }
             }),
-            ArrangeOp::MoveClip { track, clip, new_track, start } => self.edit_arrange(true, |a| {
+            ArrangeOp::MoveClip {
+                track,
+                clip,
+                new_track,
+                start,
+            } => self.edit_arrange(true, |a| {
                 if track >= a.tracks.len() || new_track >= a.tracks.len() {
                     return;
                 }
@@ -2631,23 +2684,41 @@ impl EditorController {
                     a.tracks[new_track].clips.push(c);
                 }
             }),
-            ArrangeOp::ResizeClip { track, clip, length } => self.edit_arrange(true, |a| {
+            ArrangeOp::ResizeClip {
+                track,
+                clip,
+                length,
+            } => self.edit_arrange(true, |a| {
                 if let Some(c) = a.tracks.get_mut(track).and_then(|t| t.clips.get_mut(clip)) {
                     c.length = length.max(0.05);
                 }
             }),
-            ArrangeOp::StretchClip { track, clip, length, speed } => self.edit_arrange(true, |a| {
+            ArrangeOp::StretchClip {
+                track,
+                clip,
+                length,
+                speed,
+            } => self.edit_arrange(true, |a| {
                 if let Some(c) = a.tracks.get_mut(track).and_then(|t| t.clips.get_mut(clip)) {
                     c.length = length.max(0.05);
                     c.speed = speed.clamp(0.1, 10.0);
                 }
             }),
-            ArrangeOp::SetClipOffset { track, clip, offset } => self.edit_arrange(true, |a| {
+            ArrangeOp::SetClipOffset {
+                track,
+                clip,
+                offset,
+            } => self.edit_arrange(true, |a| {
                 if let Some(c) = a.tracks.get_mut(track).and_then(|t| t.clips.get_mut(clip)) {
                     c.offset = offset.max(0.0);
                 }
             }),
-            ArrangeOp::TrimStart { track, clip, start, offset } => self.edit_arrange(true, |a| {
+            ArrangeOp::TrimStart {
+                track,
+                clip,
+                start,
+                offset,
+            } => self.edit_arrange(true, |a| {
                 if let Some(c) = a.tracks.get_mut(track).and_then(|t| t.clips.get_mut(clip)) {
                     // Keep the right edge fixed: shrink length as the start moves in.
                     let right = c.start + c.length;
@@ -2658,8 +2729,12 @@ impl EditorController {
                 }
             }),
             ArrangeOp::SplitClip { track, clip, at } => self.edit_arrange(true, |a| {
-                let Some(t) = a.tracks.get_mut(track) else { return };
-                let Some(c) = t.clips.get(clip).cloned() else { return };
+                let Some(t) = a.tracks.get_mut(track) else {
+                    return;
+                };
+                let Some(c) = t.clips.get(clip).cloned() else {
+                    return;
+                };
                 let local = at - c.start;
                 if local <= 0.0 || local >= c.length {
                     return; // split point outside the clip
@@ -2682,7 +2757,11 @@ impl EditorController {
                     c.gain = gain.clamp(0.0, 4.0);
                 }
             }),
-            ArrangeOp::SetClipLoop { track, clip, looping } => self.edit_arrange(true, |a| {
+            ArrangeOp::SetClipLoop {
+                track,
+                clip,
+                looping,
+            } => self.edit_arrange(true, |a| {
                 if let Some(c) = a.tracks.get_mut(track).and_then(|t| t.clips.get_mut(clip)) {
                     c.looping = looping;
                 }
@@ -2691,7 +2770,10 @@ impl EditorController {
     }
 
     /// The kind of a sample by id.
-    fn sample_kind(&self, id: awsm_audio_schema::SampleId) -> Option<awsm_audio_schema::SampleKind> {
+    fn sample_kind(
+        &self,
+        id: awsm_audio_schema::SampleId,
+    ) -> Option<awsm_audio_schema::SampleKind> {
         self.samples
             .borrow()
             .iter()
@@ -2715,8 +2797,11 @@ impl EditorController {
 
     /// Whether an arrangement clip is set to loop (for the clip context menu).
     pub fn clip_looping(&self, track: usize, clip: usize) -> Option<bool> {
-        self.active_arrangement()
-            .and_then(|a| a.tracks.get(track).and_then(|t| t.clips.get(clip).map(|c| c.looping)))
+        self.active_arrangement().and_then(|a| {
+            a.tracks
+                .get(track)
+                .and_then(|t| t.clips.get(clip).map(|c| c.looping))
+        })
     }
 
     /// Copy one clip into the clip clipboard (used by the clip context menu).
@@ -2727,7 +2812,9 @@ impl EditorController {
     /// Copy a set of clips (`(track, clip)`) into the clipboard, preserving their
     /// tracks and relative timing.
     pub fn copy_clips(&self, sel: &[(usize, usize)]) {
-        let Some(arr) = self.active_arrangement() else { return };
+        let Some(arr) = self.active_arrangement() else {
+            return;
+        };
         let mut out = Vec::new();
         for &(t, c) in sel {
             if let Some(clip) = arr.tracks.get(t).and_then(|tr| tr.clips.get(c)).cloned() {
@@ -2770,7 +2857,10 @@ impl EditorController {
         if ntracks == 0 {
             return;
         }
-        let earliest = clips.iter().map(|(_, c)| c.start).fold(f64::INFINITY, f64::min);
+        let earliest = clips
+            .iter()
+            .map(|(_, c)| c.start)
+            .fold(f64::INFINITY, f64::min);
         let min_track = clips.iter().map(|(t, _)| *t).min().unwrap_or(0);
         let placed: Vec<command::PlacedClip> = clips
             .into_iter()
@@ -2780,7 +2870,10 @@ impl EditorController {
                     Some(base) => base + (track - min_track),
                     None => track,
                 };
-                command::PlacedClip { track: track.min(ntracks - 1), clip }
+                command::PlacedClip {
+                    track: track.min(ntracks - 1),
+                    clip,
+                }
             })
             .collect();
         self.dispatch(EditorCommand::EditArrange {
@@ -2829,17 +2922,20 @@ impl EditorController {
 
     /// Follow an arrangement clip to its source Sound (double-click a clip).
     pub fn open_clip_source(&self, track: usize, clip: usize) {
-        if let Some(src) = self
-            .active_arrangement()
-            .and_then(|a| a.tracks.get(track).and_then(|t| t.clips.get(clip).map(|c| c.source)))
-        {
+        if let Some(src) = self.active_arrangement().and_then(|a| {
+            a.tracks
+                .get(track)
+                .and_then(|t| t.clips.get(clip).map(|c| c.source))
+        }) {
             self.open_sample(src);
         }
     }
 
     /// Jump to a sample: show its view and make it active.
     pub fn open_sample(&self, id: awsm_audio_schema::SampleId) {
-        let Some(kind) = self.sample_kind(id) else { return };
+        let Some(kind) = self.sample_kind(id) else {
+            return;
+        };
         self.piano_roll.set(None);
         self.commit_active();
         self.view.set(kind);
@@ -2946,7 +3042,12 @@ impl EditorController {
     /// Assets panel. (Arrangements aren't bounceable.)
     pub fn assets_list(
         &self,
-    ) -> Vec<(awsm_audio_schema::SampleId, String, BounceStatus, Option<f64>)> {
+    ) -> Vec<(
+        awsm_audio_schema::SampleId,
+        String,
+        BounceStatus,
+        Option<f64>,
+    )> {
         use awsm_audio_schema::SampleKind;
         let ids: Vec<(awsm_audio_schema::SampleId, String)> = self
             .samples
@@ -2978,11 +3079,15 @@ impl EditorController {
         }
         // Mic/stream sounds can't render offline.
         let has_live_source = sample.graph.nodes.iter().any(|n| {
-            matches!(n.kind, NodeKind::MediaStreamSource(_) | NodeKind::MediaElementSource(_))
+            matches!(
+                n.kind,
+                NodeKind::MediaStreamSource(_) | NodeKind::MediaElementSource(_)
+            )
         });
         if has_live_source {
-            self.status
-                .set(Some("Can't render a Sound with a live mic / stream source.".into()));
+            self.status.set(Some(
+                "Can't render a Sound with a live mic / stream source.".into(),
+            ));
             return None;
         }
         if !self.ensure_player() {
@@ -2999,13 +3104,21 @@ impl EditorController {
             let loop_len = loop_len.max(0.05);
             (g, parts, control, loop_len + RELEASE_TAIL, Some(loop_len))
         } else {
-            (awsm_audio_schema::flatten(&lib, id), Vec::new(), Vec::new(), 6.0, None)
+            (
+                awsm_audio_schema::flatten(&lib, id),
+                Vec::new(),
+                Vec::new(),
+                6.0,
+                None,
+            )
         };
-        let job =
-            self.player
-                .borrow()
-                .as_ref()?
-                .bounce_job(graph, parts, control, duration.max(0.25), loop_secs);
+        let job = self.player.borrow().as_ref()?.bounce_job(
+            graph,
+            parts,
+            control,
+            duration.max(0.25),
+            loop_secs,
+        );
         Some((job, sample.name.clone()))
     }
 
@@ -3105,7 +3218,12 @@ impl EditorController {
     ) {
         use awsm_audio_schema::{ConnectionSink, ConnectionSource, NodeKind};
         let Some(sample) = lib.sample(id) else {
-            return (awsm_audio_schema::Graph::default(), Vec::new(), Vec::new(), 0.0);
+            return (
+                awsm_audio_schema::Graph::default(),
+                Vec::new(),
+                Vec::new(),
+                0.0,
+            );
         };
         let g = sample.graph.clone();
         let mut parts = Vec::new();
@@ -3118,7 +3236,10 @@ impl EditorController {
         for c in &g.connections {
             match (&c.from, &c.to) {
                 // Note sequencer → trigger an instrument-ref voice bus.
-                (ConnectionSource::SeqOut { node: seqn, key }, ConnectionSink::Trigger { node }) => {
+                (
+                    ConnectionSource::SeqOut { node: seqn, key },
+                    ConnectionSink::Trigger { node },
+                ) => {
                     let Some(NodeKind::NoteSequencer(ms)) = g.node(*seqn).map(|n| &n.kind) else {
                         continue;
                     };
@@ -3182,8 +3303,12 @@ impl EditorController {
                     }
                 }
                 // Control sequencer → automate a node param.
-                (ConnectionSource::SeqOut { node: seqn, key }, ConnectionSink::NodeParam { node, param }) => {
-                    let Some(NodeKind::ControlSequencer(cs)) = g.node(*seqn).map(|n| &n.kind) else {
+                (
+                    ConnectionSource::SeqOut { node: seqn, key },
+                    ConnectionSink::NodeParam { node, param },
+                ) => {
+                    let Some(NodeKind::ControlSequencer(cs)) = g.node(*seqn).map(|n| &n.kind)
+                    else {
                         continue;
                     };
                     let Some(lane) = cs.lanes.iter().find(|l| &l.key == key) else {
@@ -3204,7 +3329,11 @@ impl EditorController {
                 _ => {}
             }
         }
-        let loop_len = if window_secs > 0.0 { window_secs } else { content_end };
+        let loop_len = if window_secs > 0.0 {
+            window_secs
+        } else {
+            content_end
+        };
         (g, parts, control, loop_len)
     }
 
@@ -3264,7 +3393,11 @@ impl EditorController {
         let Some(ba) = bufs.get(&asset) else {
             return Vec::new();
         };
-        let AudioSource::Pcm { channels, sample_rate } = &ba.source else {
+        let AudioSource::Pcm {
+            channels,
+            sample_rate,
+        } = &ba.source
+        else {
             return Vec::new();
         };
         let Some(data) = channels.first() else {
@@ -3297,7 +3430,6 @@ impl EditorController {
             .collect()
     }
 
-
     /// The live-tweakable param targets of an input (inlet), as `(node, param)`
     /// pairs — `Some` only if *every* wire leaving the inlet drives a param on a
     /// non-Sample node (so its id is stable in the played graph and the player
@@ -3306,7 +3438,12 @@ impl EditorController {
     /// rebuild. An input wired to nothing yields `Some(empty)` (a no-op sweep).
     fn live_param_targets(&self, inlet: NodeId) -> Option<Vec<(NodeId, String)>> {
         let mut targets = Vec::new();
-        for c in self.connections.lock_ref().iter().filter(|c| c.from.id == inlet) {
+        for c in self
+            .connections
+            .lock_ref()
+            .iter()
+            .filter(|c| c.from.id == inlet)
+        {
             match &c.sink {
                 ConnSink::Param(p) => {
                     if matches!(&*c.to.kind.borrow(), awsm_audio_schema::NodeKind::Sample(_)) {
@@ -3475,7 +3612,8 @@ impl EditorController {
         // Play exactly as Play does (view-aware), then capture the master output.
         self.play();
         self.status.set(Some(
-            "\u{25CF} Recording the live output… click Export again to stop & save the .wav.".into(),
+            "\u{25CF} Recording the live output… click Export again to stop & save the .wav."
+                .into(),
         ));
     }
 
@@ -3499,8 +3637,9 @@ impl EditorController {
             }
             _ => {
                 tracing::warn!("export captured no audio");
-                self.status
-                    .set(Some("Export captured no audio (was anything playing?).".into()));
+                self.status.set(Some(
+                    "Export captured no audio (was anything playing?).".into(),
+                ));
             }
         }
     }
@@ -3913,7 +4052,9 @@ impl EditorController {
                     // A directory-project path; resolvable only when opened via a
                     // project directory (which rehydrates it to inline bytes).
                     awsm_audio_schema::WasmSource::Path(path) => {
-                        tracing::warn!("wasm asset references file {path}; open via a project directory");
+                        tracing::warn!(
+                            "wasm asset references file {path}; open via a project directory"
+                        );
                         return;
                     }
                 };
@@ -4127,11 +4268,13 @@ impl EditorController {
 
     /// Open the right-click context menu on a node.
     pub fn open_context_menu(&self, node: NodeId, x: f64, y: f64) {
-        self.context_menu.set(Some((ContextTarget::Node(node), x, y)));
+        self.context_menu
+            .set(Some((ContextTarget::Node(node), x, y)));
     }
     /// Open the context menu on a wire.
     pub fn open_wire_menu(&self, wire: ConnId, x: f64, y: f64) {
-        self.context_menu.set(Some((ContextTarget::Wire(wire), x, y)));
+        self.context_menu
+            .set(Some((ContextTarget::Wire(wire), x, y)));
     }
     /// Open the context menu on an arrangement clip.
     pub fn open_clip_menu(&self, track: usize, clip: usize, x: f64, y: f64) {
@@ -4164,7 +4307,12 @@ impl EditorController {
         let track = self.selected_track.get();
         let start = self.arrange_start_secs();
         self.dispatch(EditorCommand::EditArrange {
-            op: ArrangeOp::AddClip { track, start, source: id, length: None },
+            op: ArrangeOp::AddClip {
+                track,
+                start,
+                source: id,
+                length: None,
+            },
         });
     }
 
@@ -4210,7 +4358,6 @@ impl EditorController {
             self.play();
         }
     }
-
 
     /// Request microphone access (getUserMedia); on grant, store the stream and
     /// replay so any MediaStream source node taps the live input.
@@ -4793,7 +4940,13 @@ fn sanitize_filename(name: &str) -> String {
     let s: String = name
         .trim()
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '-' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '-'
+            }
+        })
         .collect();
     let s = s.trim_matches('-').to_string();
     if s.is_empty() {

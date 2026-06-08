@@ -393,13 +393,12 @@ fn build_node(
             n.set_oversample(oversample(ws.oversample));
             // A user-drawn curve (Custom) is resampled to the WebAudio table;
             // otherwise the curve is generated from the shape + amount.
-            let mut curve = if ws.shape == awsm_audio_schema::WaveShaperShape::Custom
-                && !ws.curve.is_empty()
-            {
-                resample_curve(&ws.curve, 1024)
-            } else {
-                distortion_curve(ws.shape, ws.amount)
-            };
+            let mut curve =
+                if ws.shape == awsm_audio_schema::WaveShaperShape::Custom && !ws.curve.is_empty() {
+                    resample_curve(&ws.curve, 1024)
+                } else {
+                    distortion_curve(ws.shape, ws.amount)
+                };
             #[allow(deprecated)] // the slice-based setter is the one web-sys exposes
             n.set_curve(Some(&mut curve));
             plain(n.unchecked_into(), None, vec![])

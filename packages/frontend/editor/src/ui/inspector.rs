@@ -360,13 +360,23 @@ fn cc_file_button(id: NodeId) -> Dom {
 /// (always covering at least 4 beats and the 0..1 value band).
 fn lane_plot(id: NodeId, idx: usize, points: &[awsm_audio_schema::ControlPoint]) -> Dom {
     let tmax = points.iter().map(|p| p.beat).fold(4.0_f64, f64::max);
-    let vmin = points.iter().map(|p| p.value as f64).fold(0.0_f64, f64::min);
-    let vmax = points.iter().map(|p| p.value as f64).fold(1.0_f64, f64::max);
+    let vmin = points
+        .iter()
+        .map(|p| p.value as f64)
+        .fold(0.0_f64, f64::min);
+    let vmax = points
+        .iter()
+        .map(|p| p.value as f64)
+        .fold(1.0_f64, f64::max);
     let host: Rc<RefCell<Option<web_sys::HtmlElement>>> = Rc::new(RefCell::new(None));
     // Sorted-by-beat path through the breakpoints. Each segment is drawn in the
     // shape of the *target* point's curve, so the plot matches what plays back.
     let mut sorted: Vec<&awsm_audio_schema::ControlPoint> = points.iter().collect();
-    sorted.sort_by(|a, b| a.beat.partial_cmp(&b.beat).unwrap_or(std::cmp::Ordering::Equal));
+    sorted.sort_by(|a, b| {
+        a.beat
+            .partial_cmp(&b.beat)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     let d = curve_path(&sorted, tmax, vmin, vmax);
 
     html!("div" => web_sys::HtmlElement, {

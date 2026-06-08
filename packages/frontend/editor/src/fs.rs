@@ -195,15 +195,17 @@ impl ProjectDir {
             }
             let options = FileSystemGetDirectoryOptions::new();
             options.set_create(create);
-            let next_value =
-                match JsFuture::from(dir.get_directory_handle_with_options(segment, &options)).await
-                {
-                    Ok(value) => value,
-                    Err(err) if is_not_found_error(&err) => {
-                        return Err(FsError::NotFound(path.into()));
-                    }
-                    Err(err) => return Err(FsError::Js(js_value_to_string(&err))),
-                };
+            let next_value = match JsFuture::from(
+                dir.get_directory_handle_with_options(segment, &options),
+            )
+            .await
+            {
+                Ok(value) => value,
+                Err(err) if is_not_found_error(&err) => {
+                    return Err(FsError::NotFound(path.into()));
+                }
+                Err(err) => return Err(FsError::Js(js_value_to_string(&err))),
+            };
             dir = next_value
                 .dyn_into()
                 .map_err(|_| FsError::Js("getDirectoryHandle did not return a directory".into()))?;

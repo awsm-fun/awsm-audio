@@ -250,7 +250,11 @@ pub fn fields(kind: &NodeKind) -> Vec<Field> {
         ],
         NodeKind::Convolver(c) => vec![
             num("reverb_seconds", "reverb (s)", c.reverb_seconds),
-            boolean("disable_normalization", "no normalize", c.disable_normalization),
+            boolean(
+                "disable_normalization",
+                "no normalize",
+                c.disable_normalization,
+            ),
         ],
         NodeKind::StereoPanner(p) => vec![amod("pan", "pan", p.pan.value, "pan")],
         NodeKind::Panner(p) => vec![

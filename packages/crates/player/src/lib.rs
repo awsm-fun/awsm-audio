@@ -803,9 +803,11 @@ impl Player {
     pub fn set_param_live(&self, node: NodeId, param: &str, value: f32, glide: f64) {
         let now = self.ctx.current_time();
         let apply = |params: &[(NodeId, Vec<(&'static str, web_sys::AudioParam)>)]| {
-            if let Some(p) = params.iter().find(|(id, _)| *id == node).and_then(|(_, ps)| {
-                ps.iter().find(|(name, _)| *name == param).map(|(_, p)| p)
-            }) {
+            if let Some(p) = params
+                .iter()
+                .find(|(id, _)| *id == node)
+                .and_then(|(_, ps)| ps.iter().find(|(name, _)| *name == param).map(|(_, p)| p))
+            {
                 if glide <= 0.0 {
                     let _ = p.set_value_at_time(value, now);
                 } else {

@@ -383,7 +383,6 @@ fn lib(sample: Sample) -> SampleLibrary {
     }
 }
 
-
 fn p(value: f32) -> AudioParam {
     AudioParam::new(value)
 }
@@ -1046,9 +1045,10 @@ fn song() -> SampleLibrary {
 
     let mut kick = Sample::new("Kick");
     {
-        let o = kick
-            .graph
-            .push_node(Node::new(osc(exp_sweep(150.0, 50.0, 0.12), OscillatorType::Sine)));
+        let o = kick.graph.push_node(Node::new(osc(
+            exp_sweep(150.0, 50.0, 0.12),
+            OscillatorType::Sine,
+        )));
         let amp = kick
             .graph
             .push_node(Node::new(gain(env_perc(0.95, 0.002, 0.28))));
@@ -1060,9 +1060,11 @@ fn song() -> SampleLibrary {
         let n = snare
             .graph
             .push_node(Node::new(noise(NoiseFlavor::White, 1.0, 7, 0.0)));
-        let hp = snare
-            .graph
-            .push_node(Node::new(biquad(BiquadFilterType::Highpass, p(1500.0), 0.8)));
+        let hp = snare.graph.push_node(Node::new(biquad(
+            BiquadFilterType::Highpass,
+            p(1500.0),
+            0.8,
+        )));
         let amp = snare
             .graph
             .push_node(Node::new(gain(env_perc(0.6, 0.001, 0.18))));
@@ -1075,9 +1077,11 @@ fn song() -> SampleLibrary {
         let n = hat
             .graph
             .push_node(Node::new(noise(NoiseFlavor::White, 1.0, 9, 0.0)));
-        let hp = hat
-            .graph
-            .push_node(Node::new(biquad(BiquadFilterType::Highpass, p(8000.0), 0.8)));
+        let hp = hat.graph.push_node(Node::new(biquad(
+            BiquadFilterType::Highpass,
+            p(8000.0),
+            0.8,
+        )));
         let amp = hat
             .graph
             .push_node(Node::new(gain(env_perc(0.5, 0.001, 0.05))));
@@ -1203,7 +1207,9 @@ fn song() -> SampleLibrary {
     let kick_ref = r(&mut arr, kick.id);
     let snare_ref = r(&mut arr, snare.id);
     let hat_ref = r(&mut arr, hat.id);
-    let bus = arr.graph.push_node(Node::new(NodeKind::Bus(BusNode { gain: 0.8 })));
+    let bus = arr
+        .graph
+        .push_node(Node::new(NodeKind::Bus(BusNode { gain: 0.8 })));
     let out = arr
         .graph
         .push_node(Node::new(NodeKind::Output(OutputNode::default())));
@@ -1254,17 +1260,22 @@ fn arrangement() -> SampleLibrary {
         let lp = bass
             .graph
             .push_node(Node::new(biquad(BiquadFilterType::Lowpass, p(600.0), 4.0)));
-        let amp = bass.graph.push_node(Node::new(gain(env_perc(0.7, 0.005, 0.4))));
+        let amp = bass
+            .graph
+            .push_node(Node::new(gain(env_perc(0.7, 0.005, 0.4))));
         bass.graph.connect(Connection::node_to_node(saw, lp));
         bass.graph.connect(Connection::node_to_node(lp, amp));
     }
 
     let mut kick = Sample::new("Kick");
     {
-        let o = kick
+        let o = kick.graph.push_node(Node::new(osc(
+            exp_sweep(150.0, 50.0, 0.12),
+            OscillatorType::Sine,
+        )));
+        let amp = kick
             .graph
-            .push_node(Node::new(osc(exp_sweep(150.0, 50.0, 0.12), OscillatorType::Sine)));
-        let amp = kick.graph.push_node(Node::new(gain(env_perc(0.95, 0.002, 0.28))));
+            .push_node(Node::new(gain(env_perc(0.95, 0.002, 0.28))));
         kick.graph.connect(Connection::node_to_node(o, amp));
     }
 

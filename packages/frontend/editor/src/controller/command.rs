@@ -121,7 +121,11 @@ pub enum EditorCommand {
     /// Set an inlet boundary node's default value.
     SetInputDefault { node: NodeId, value: f32 },
     /// Set (or add) a per-instance inlet override on a Sample-reference node.
-    SetInputValue { node: NodeId, port: String, value: f32 },
+    SetInputValue {
+        node: NodeId,
+        port: String,
+        value: f32,
+    },
 
     // ---- Scene ----
     /// Set the spatial listener position.
@@ -157,12 +161,31 @@ pub enum SongOp {
     SetLooping(bool),
     /// Append an empty track (and regenerate its sound output).
     AddTrack,
-    AddNote { track: usize, event: NoteEvent },
-    UpdateNote { track: usize, index: usize, event: NoteEvent },
-    RemoveNote { track: usize, index: usize },
-    SetOutputTranspose { index: usize, semitones: i32 },
-    SetOutputGain { index: usize, gain: f32 },
-    SetOutputLabel { index: usize, label: String },
+    AddNote {
+        track: usize,
+        event: NoteEvent,
+    },
+    UpdateNote {
+        track: usize,
+        index: usize,
+        event: NoteEvent,
+    },
+    RemoveNote {
+        track: usize,
+        index: usize,
+    },
+    SetOutputTranspose {
+        index: usize,
+        semitones: i32,
+    },
+    SetOutputGain {
+        index: usize,
+        gain: f32,
+    },
+    SetOutputLabel {
+        index: usize,
+        label: String,
+    },
 }
 
 /// A single edit to a Control Sequencer node. Lanes (and their breakpoints) are
@@ -174,14 +197,33 @@ pub enum ControlOp {
     SetStart(f64),
     SetLooping(bool),
     AddLane,
-    RemoveLane { index: usize },
-    SetLaneLabel { index: usize, label: String },
-    AddPoint { lane: usize, beat: f64, value: f32 },
-    RemovePoint { lane: usize, index: usize },
-    SetPoints { lane: usize, points: Vec<ControlPoint> },
+    RemoveLane {
+        index: usize,
+    },
+    SetLaneLabel {
+        index: usize,
+        label: String,
+    },
+    AddPoint {
+        lane: usize,
+        beat: f64,
+        value: f32,
+    },
+    RemovePoint {
+        lane: usize,
+        index: usize,
+    },
+    SetPoints {
+        lane: usize,
+        points: Vec<ControlPoint>,
+    },
     /// Set the curve shape of the segment *reaching* point `index` from the
     /// previous point. Cycled in the lane editor; drivable for MCP.
-    SetPointCurve { lane: usize, index: usize, curve: awsm_audio_schema::Curve },
+    SetPointCurve {
+        lane: usize,
+        index: usize,
+        curve: awsm_audio_schema::Curve,
+    },
 }
 
 /// A single edit to the active Arrangement. Tracks and clips are addressed by
@@ -194,12 +236,26 @@ pub enum ArrangeOp {
     /// Timeline length in seconds.
     SetLengthSecs(f64),
     AddTrack,
-    RemoveTrack { track: usize },
-    SetTrackName { track: usize, name: String },
-    SetTrackGain { track: usize, gain: f32 },
-    SetTrackMute { track: usize, mute: bool },
+    RemoveTrack {
+        track: usize,
+    },
+    SetTrackName {
+        track: usize,
+        name: String,
+    },
+    SetTrackGain {
+        track: usize,
+        gain: f32,
+    },
+    SetTrackMute {
+        track: usize,
+        mute: bool,
+    },
     /// Solo a track. If any track is soloed, only soloed (non-muted) tracks play.
-    SetTrackSolo { track: usize, solo: bool },
+    SetTrackSolo {
+        track: usize,
+        solo: bool,
+    },
     /// Drop a bounced Sound (`source`) as a clip on `track` at `start` seconds.
     /// `length` (timeline seconds) defaults to the full bounce duration; the Draw
     /// tool passes a shorter length so a long Sound needn't fill the whole bar.
@@ -210,30 +266,73 @@ pub enum ArrangeOp {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         length: Option<f64>,
     },
-    RemoveClip { track: usize, clip: usize },
+    RemoveClip {
+        track: usize,
+        clip: usize,
+    },
     /// Insert a fully-specified clip (paste) on `track`; `clip.start` is where it
     /// lands. Preserves source/offset/length/gain/loop/name — the copy/paste path.
-    PasteClip { track: usize, clip: awsm_audio_schema::Clip },
+    PasteClip {
+        track: usize,
+        clip: awsm_audio_schema::Clip,
+    },
     /// Insert several clips at once (multi-clip paste) — one undo.
-    PasteClips { clips: Vec<PlacedClip> },
+    PasteClips {
+        clips: Vec<PlacedClip>,
+    },
     /// Move a clip — possibly to another track (`new_track`) and a new `start` (s).
-    MoveClip { track: usize, clip: usize, new_track: usize, start: f64 },
+    MoveClip {
+        track: usize,
+        clip: usize,
+        new_track: usize,
+        start: f64,
+    },
     /// Change a clip's timeline length in seconds (right-edge trim).
-    ResizeClip { track: usize, clip: usize, length: f64 },
+    ResizeClip {
+        track: usize,
+        clip: usize,
+        length: f64,
+    },
     /// Time-stretch: set a clip's timeline `length` and playback `speed` together
     /// (the same buffer content scaled to a new length; pitch shifts with speed).
-    StretchClip { track: usize, clip: usize, length: f64, speed: f32 },
+    StretchClip {
+        track: usize,
+        clip: usize,
+        length: f64,
+        speed: f32,
+    },
     /// Set a clip's start offset into its buffer in seconds (left-edge trim).
-    SetClipOffset { track: usize, clip: usize, offset: f64 },
+    SetClipOffset {
+        track: usize,
+        clip: usize,
+        offset: f64,
+    },
     /// Atomic left-edge trim: drag the clip's start later while keeping its right
     /// edge fixed. Sets `start` (timeline secs) and `offset` (into buffer) together.
-    TrimStart { track: usize, clip: usize, start: f64, offset: f64 },
+    TrimStart {
+        track: usize,
+        clip: usize,
+        start: f64,
+        offset: f64,
+    },
     /// Split a clip at `at` (timeline seconds) into two.
-    SplitClip { track: usize, clip: usize, at: f64 },
+    SplitClip {
+        track: usize,
+        clip: usize,
+        at: f64,
+    },
     /// Set a clip's gain (linear).
-    SetClipGain { track: usize, clip: usize, gain: f32 },
+    SetClipGain {
+        track: usize,
+        clip: usize,
+        gain: f32,
+    },
     /// Loop the clip's buffer to fill its length.
-    SetClipLoop { track: usize, clip: usize, looping: bool },
+    SetClipLoop {
+        track: usize,
+        clip: usize,
+        looping: bool,
+    },
 }
 
 impl EditorCommand {

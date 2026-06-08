@@ -34,11 +34,8 @@ pub fn flatten(lib: &SampleLibrary, root: SampleId) -> Graph {
     let mut g = sample.graph.clone();
     // The top-level graph has no host, so its own boundary ports become baked-in
     // values: capture the inlet defaults first, then drop the port declarations.
-    let top_inlets: Vec<(PortId, f32)> = g
-        .inlets
-        .iter()
-        .map(|p| (p.id.clone(), p.default))
-        .collect();
+    let top_inlets: Vec<(PortId, f32)> =
+        g.inlets.iter().map(|p| (p.id.clone(), p.default)).collect();
     g.inlets.clear();
     g.outlets.clear();
 

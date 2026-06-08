@@ -169,7 +169,10 @@ fn trim_trailing_silence(channels: &mut [Vec<f32>], sample_rate: u32) {
     let len = channels.iter().map(|c| c.len()).max().unwrap_or(0);
     let mut last = 0usize;
     for i in 0..len {
-        if channels.iter().any(|c| c.get(i).is_some_and(|s| s.abs() > THRESH)) {
+        if channels
+            .iter()
+            .any(|c| c.get(i).is_some_and(|s| s.abs() > THRESH))
+        {
             last = i;
         }
     }

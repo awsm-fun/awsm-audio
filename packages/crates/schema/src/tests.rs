@@ -543,14 +543,29 @@ fn song_and_midisong_round_trip_through_toml() {
                 name: "Lead".into(),
                 channel: 0,
                 events: vec![
-                    NoteEvent { start: 0.0, length: 1.0, note: 60, velocity: 100 },
-                    NoteEvent { start: 1.0, length: 0.5, note: 64, velocity: 90 },
+                    NoteEvent {
+                        start: 0.0,
+                        length: 1.0,
+                        note: 60,
+                        velocity: 100,
+                    },
+                    NoteEvent {
+                        start: 1.0,
+                        length: 0.5,
+                        note: 64,
+                        velocity: 90,
+                    },
                 ],
             },
             Track {
                 name: "Drums".into(),
                 channel: 9,
-                events: vec![NoteEvent { start: 0.0, length: 0.25, note: 36, velocity: 110 }],
+                events: vec![NoteEvent {
+                    start: 0.0,
+                    length: 0.25,
+                    note: 36,
+                    velocity: 110,
+                }],
             },
         ],
     };
@@ -589,17 +604,25 @@ fn song_and_midisong_round_trip_through_toml() {
 
     let toml = toml::to_string(&graph).expect("serialize");
     let back: Graph = toml::from_str(&toml).expect("deserialize");
-    assert_eq!(graph, back, "NoteSequencer graph did not round-trip:\n{toml}");
+    assert_eq!(
+        graph, back,
+        "NoteSequencer graph did not round-trip:\n{toml}"
+    );
 }
 
 #[test]
 fn keyed_connections_and_sample_kind_round_trip() {
     use crate::{ConnectionSink, ConnectionSource, SampleKind};
     let mut g = Graph::default();
-    let seq = g.push_node(Node::new(NodeKind::NoteSequencer(NoteSequencerNode::default())));
+    let seq = g.push_node(Node::new(NodeKind::NoteSequencer(
+        NoteSequencerNode::default(),
+    )));
     let inst = g.push_node(Node::new(NodeKind::Bus(BusNode::default())));
     g.connect(Connection {
-        from: ConnectionSource::SeqOut { node: seq, key: "t0".into() },
+        from: ConnectionSource::SeqOut {
+            node: seq,
+            key: "t0".into(),
+        },
         to: ConnectionSink::Trigger { node: inst },
     });
     let back: Graph = toml::from_str(&toml::to_string(&g).unwrap()).unwrap();
@@ -611,7 +634,9 @@ fn keyed_connections_and_sample_kind_round_trip() {
     assert_eq!(s, back);
 
     // Older documents that named the kind "sequence"/"instrument" still load.
-    let legacy_text = toml::to_string(&s).unwrap().replace("\"sound\"", "\"sequence\"");
+    let legacy_text = toml::to_string(&s)
+        .unwrap()
+        .replace("\"sound\"", "\"sequence\"");
     let legacy: Sample = toml::from_str(&legacy_text).unwrap();
     assert_eq!(legacy.kind, SampleKind::Sound);
 }
@@ -640,14 +665,20 @@ fn parse_smf_round_trips_notes_and_tempo() {
         delta: u28::new(0),
         kind: TrackEventKind::Midi {
             channel: u4::new(0),
-            message: MidiMessage::NoteOn { key: u7::new(60), vel: u7::new(100) },
+            message: MidiMessage::NoteOn {
+                key: u7::new(60),
+                vel: u7::new(100),
+            },
         },
     });
     t.push(TrackEvent {
         delta: u28::new(96),
         kind: TrackEventKind::Midi {
             channel: u4::new(0),
-            message: MidiMessage::NoteOff { key: u7::new(60), vel: u7::new(0) },
+            message: MidiMessage::NoteOff {
+                key: u7::new(60),
+                vel: u7::new(0),
+            },
         },
     });
     t.push(TrackEvent {
@@ -683,19 +714,44 @@ fn tempo_map_beats_secs_round_trip() {
     let song = Song {
         bpm: 120.0,
         tempo_map: vec![
-            TempoChange { beat: 0.0, bpm: 120.0 },
-            TempoChange { beat: 4.0, bpm: 60.0 },
+            TempoChange {
+                beat: 0.0,
+                bpm: 120.0,
+            },
+            TempoChange {
+                beat: 4.0,
+                bpm: 60.0,
+            },
         ],
         tracks: vec![],
     };
     // 4 beats @120 = 2.0s; +2 beats @60 = +2.0s → 4.0s at beat 6.
-    assert!((song.beats_to_secs(4.0) - 2.0).abs() < 1e-9, "{}", song.beats_to_secs(4.0));
-    assert!((song.beats_to_secs(6.0) - 4.0).abs() < 1e-9, "{}", song.beats_to_secs(6.0));
+    assert!(
+        (song.beats_to_secs(4.0) - 2.0).abs() < 1e-9,
+        "{}",
+        song.beats_to_secs(4.0)
+    );
+    assert!(
+        (song.beats_to_secs(6.0) - 4.0).abs() < 1e-9,
+        "{}",
+        song.beats_to_secs(6.0)
+    );
     // Inverse.
-    assert!((song.secs_to_beats(2.0) - 4.0).abs() < 1e-9, "{}", song.secs_to_beats(2.0));
-    assert!((song.secs_to_beats(4.0) - 6.0).abs() < 1e-9, "{}", song.secs_to_beats(4.0));
+    assert!(
+        (song.secs_to_beats(2.0) - 4.0).abs() < 1e-9,
+        "{}",
+        song.secs_to_beats(2.0)
+    );
+    assert!(
+        (song.secs_to_beats(4.0) - 6.0).abs() < 1e-9,
+        "{}",
+        song.secs_to_beats(4.0)
+    );
     // Constant-tempo path still linear.
-    let flat = Song { bpm: 120.0, ..Default::default() };
+    let flat = Song {
+        bpm: 120.0,
+        ..Default::default()
+    };
     assert!((flat.beats_to_secs(2.0) - 1.0).abs() < 1e-9);
     assert!((flat.secs_to_beats(1.0) - 2.0).abs() < 1e-9);
 }
@@ -729,7 +785,10 @@ fn arrangement_round_trips() {
 
     // A bounce round-trips on a Sound.
     let mut snd = Sample::new("lead");
-    snd.bounce = Some(Bounce { asset: AssetId::new(), source_hash: 42 });
+    snd.bounce = Some(Bounce {
+        asset: AssetId::new(),
+        source_hash: 42,
+    });
     let back: Sample = toml::from_str(&toml::to_string(&snd).unwrap()).unwrap();
     assert_eq!(back.bounce.unwrap().source_hash, 42);
 
@@ -759,12 +818,29 @@ fn port_matrix_rules() {
 fn validate_rejects_incompatible_wire() {
     // A control-sequencer output wired into an audio input must be flagged.
     let mut s = Sample::new("bad");
-    let osc = s.graph.push_node(Node::new(NodeKind::Oscillator(OscillatorNode::default())));
-    let ctl = s.graph.push_node(Node::new(NodeKind::ControlSequencer(ControlSequencerNode::default())));
+    let osc = s
+        .graph
+        .push_node(Node::new(NodeKind::Oscillator(OscillatorNode::default())));
+    let ctl = s.graph.push_node(Node::new(NodeKind::ControlSequencer(
+        ControlSequencerNode::default(),
+    )));
     s.graph.connect(Connection {
-        from: ConnectionSource::SeqOut { node: ctl, key: "lane".into() },
-        to: ConnectionSink::NodeInput { node: osc, input: 0 },
+        from: ConnectionSource::SeqOut {
+            node: ctl,
+            key: "lane".into(),
+        },
+        to: ConnectionSink::NodeInput {
+            node: osc,
+            input: 0,
+        },
     });
-    let lib = SampleLibrary { root: Some(s.id), samples: vec![s], ..Default::default() };
-    assert!(lib.validate().iter().any(|e| matches!(e, SchemaError::IncompatibleWire { .. })));
+    let lib = SampleLibrary {
+        root: Some(s.id),
+        samples: vec![s],
+        ..Default::default()
+    };
+    assert!(lib
+        .validate()
+        .iter()
+        .any(|e| matches!(e, SchemaError::IncompatibleWire { .. })));
 }

@@ -391,9 +391,9 @@ fn ext_from_label(label: &Option<String>, default: &str) -> String {
     label
         .as_deref()
         .and_then(|l| {
-            l.rsplit_once('.')
-                .map(|(_, ext)| ext)
-                .filter(|ext| !ext.is_empty() && ext.len() <= 5 && ext.chars().all(|c| c.is_ascii_alphanumeric()))
+            l.rsplit_once('.').map(|(_, ext)| ext).filter(|ext| {
+                !ext.is_empty() && ext.len() <= 5 && ext.chars().all(|c| c.is_ascii_alphanumeric())
+            })
         })
         .map(|ext| ext.to_ascii_lowercase())
         .unwrap_or_else(|| default.to_string())

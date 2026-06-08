@@ -55,7 +55,9 @@ impl Graph {
         use crate::nodes::NodeKind;
         match src {
             // Audio outputs are always audio; sequencers publish via `SeqOut`.
-            ConnectionSource::NodeOutput { .. } | ConnectionSource::Inlet { .. } => Some(Emit::Audio),
+            ConnectionSource::NodeOutput { .. } | ConnectionSource::Inlet { .. } => {
+                Some(Emit::Audio)
+            }
             ConnectionSource::SeqOut { node, .. } => self.node(*node).map(|n| match n.kind {
                 NodeKind::ControlSequencer(_) => Emit::Control,
                 _ => Emit::Trigger,
