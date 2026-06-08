@@ -1,0 +1,129 @@
+version = 1
+root = "9f7707bb-4589-4e94-9297-d442de49c611"
+
+[[samples]]
+id = "9f7707bb-4589-4e94-9297-d442de49c611"
+name = "Wobble Bass"
+kind = "sound"
+
+[[samples.graph.nodes]]
+id = "a88a8ba7-3348-419f-b7bd-e08afc65feee"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sawtooth"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 55.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "75f38a9d-d766-4420-92b8-557988cb1cfc"
+
+[samples.graph.nodes.kind]
+kind = "biquad_filter"
+
+[samples.graph.nodes.kind.props]
+type = "lowpass"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 700.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[samples.graph.nodes.kind.props.Q]
+value = 9.0
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "a85cba20-3c16-4afd-a0a8-758ecdde4e2b"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.5
+
+[[samples.graph.nodes]]
+id = "36dcabce-b68f-4cb8-b8a5-e80df5e725fa"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sine"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 4.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "c51af542-09f6-47bd-925f-8cd2c2377e63"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 550.0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "a88a8ba7-3348-419f-b7bd-e08afc65feee"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "75f38a9d-d766-4420-92b8-557988cb1cfc"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "75f38a9d-d766-4420-92b8-557988cb1cfc"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "a85cba20-3c16-4afd-a0a8-758ecdde4e2b"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "36dcabce-b68f-4cb8-b8a5-e80df5e725fa"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "c51af542-09f6-47bd-925f-8cd2c2377e63"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "c51af542-09f6-47bd-925f-8cd2c2377e63"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_param"
+node = "75f38a9d-d766-4420-92b8-557988cb1cfc"
+param = "frequency"
+
+[samples.trigger]
+release = 0.0
+
+[assets]

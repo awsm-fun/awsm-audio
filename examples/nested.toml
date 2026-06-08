@@ -1,0 +1,126 @@
+version = 1
+root = "a6a96a97-923e-4a05-8564-f61ce34b8c4a"
+
+[[samples]]
+id = "a6a96a97-923e-4a05-8564-f61ce34b8c4a"
+name = "Nested"
+kind = "sound"
+
+[[samples.graph.nodes]]
+id = "6bf53897-0d50-4829-8509-a1a70a670c33"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sawtooth"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 110.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "b36596f6-280a-4d13-b514-590b819aca98"
+
+[samples.graph.nodes.kind]
+kind = "sample"
+
+[samples.graph.nodes.kind.props]
+sample = "65d83a47-6dd8-4426-9b9d-4abe6dd6324a"
+
+[[samples.graph.nodes]]
+id = "e9911ca3-d2aa-4a31-9552-998d30edcf56"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.5
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "6bf53897-0d50-4829-8509-a1a70a670c33"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "b36596f6-280a-4d13-b514-590b819aca98"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "b36596f6-280a-4d13-b514-590b819aca98"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "e9911ca3-d2aa-4a31-9552-998d30edcf56"
+input = 0
+
+[samples.trigger]
+release = 0.0
+
+[[samples]]
+id = "65d83a47-6dd8-4426-9b9d-4abe6dd6324a"
+name = "Voice"
+kind = "sound"
+
+[[samples.graph.nodes]]
+id = "cd49be58-5109-428c-a7a8-de328d552be6"
+
+[samples.graph.nodes.kind]
+kind = "biquad_filter"
+
+[samples.graph.nodes.kind.props]
+type = "lowpass"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 800.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[samples.graph.nodes.kind.props.Q]
+value = 1.0
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "inlet"
+port = "in"
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "cd49be58-5109-428c-a7a8-de328d552be6"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "cd49be58-5109-428c-a7a8-de328d552be6"
+output = 0
+
+[samples.graph.connections.to]
+to = "outlet"
+port = "out"
+
+[[samples.graph.inlets]]
+id = "in"
+
+[[samples.graph.outlets]]
+id = "out"
+
+[samples.trigger]
+release = 0.0
+
+[assets]

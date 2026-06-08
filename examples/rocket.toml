@@ -1,0 +1,170 @@
+version = 1
+root = "b1e9d15a-78b0-4538-98cb-0f982552d0eb"
+
+[[samples]]
+id = "b1e9d15a-78b0-4538-98cb-0f982552d0eb"
+name = "Rocket"
+kind = "sound"
+
+[[samples.graph.nodes]]
+id = "df19b029-21fc-4565-b7eb-6f29d46ee1ea"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.0
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.0
+time = 0.0
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "linear_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.8999999761581421
+time = 4.0
+
+[[samples.graph.nodes]]
+id = "d09cfced-7346-4b2c-bd8e-31c49c553cb9"
+
+[samples.graph.nodes.kind]
+kind = "noise"
+
+[samples.graph.nodes.kind.props]
+flavor = "brown"
+seed = 3
+seconds = 5.0
+stereo = true
+density = 0.0
+gaussian = false
+
+[[samples.graph.nodes]]
+id = "5cd7e5f1-7a4a-437d-b166-c6ecf43b72f9"
+
+[samples.graph.nodes.kind]
+kind = "biquad_filter"
+
+[samples.graph.nodes.kind.props]
+type = "lowpass"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 180.0
+
+[[samples.graph.nodes.kind.props.frequency.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.frequency.automation.args]
+value = 180.0
+time = 0.0
+
+[[samples.graph.nodes.kind.props.frequency.automation]]
+event = "linear_ramp"
+
+[samples.graph.nodes.kind.props.frequency.automation.args]
+value = 6000.0
+time = 5.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[samples.graph.nodes.kind.props.Q]
+value = 1.2000000476837158
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "91a89ba9-c67d-46ff-a68b-5ca25789a45b"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sine"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 38.0
+
+[[samples.graph.nodes.kind.props.frequency.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.frequency.automation.args]
+value = 38.0
+time = 0.0
+
+[[samples.graph.nodes.kind.props.frequency.automation]]
+event = "linear_ramp"
+
+[samples.graph.nodes.kind.props.frequency.automation.args]
+value = 120.0
+time = 5.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "bffba14a-f8f6-4334-8eb6-f8a7c26b5a67"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.5
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "d09cfced-7346-4b2c-bd8e-31c49c553cb9"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "5cd7e5f1-7a4a-437d-b166-c6ecf43b72f9"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "5cd7e5f1-7a4a-437d-b166-c6ecf43b72f9"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "df19b029-21fc-4565-b7eb-6f29d46ee1ea"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "91a89ba9-c67d-46ff-a68b-5ca25789a45b"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "bffba14a-f8f6-4334-8eb6-f8a7c26b5a67"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "bffba14a-f8f6-4334-8eb6-f8a7c26b5a67"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "df19b029-21fc-4565-b7eb-6f29d46ee1ea"
+input = 0
+
+[samples.trigger]
+release = 0.0
+
+[assets]

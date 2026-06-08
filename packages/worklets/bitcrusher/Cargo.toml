@@ -1,0 +1,15 @@
+[package]
+name = "awsm-audio-worklet-bitcrusher"
+description = "Example WASM DSP processor: a bitcrusher (bit-depth + sample-rate reduction)."
+publish = false
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+awsm-audio-worklet = { workspace = true }

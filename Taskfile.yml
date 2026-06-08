@@ -1,0 +1,52 @@
+version: "3"
+
+silent: true
+
+dotenv: [".env"]
+
+includes:
+  config:
+    taskfile: ./taskfiles/config.yml
+    flatten: true
+  editor:
+    taskfile: ./taskfiles/frontend/editor.yml
+
+tasks:
+  default:
+    desc: "List all tasks"
+    cmds:
+      - task --list-all
+
+  dev:
+    desc: "Build the example worklets, then run the editor dev server"
+    cmds:
+      - task: worklets
+      - task: editor:dev
+
+  build:
+    desc: "Build every frontend for production into .build-artifacts/"
+    cmds:
+      - task: worklets
+      - task: editor:build
+
+  clean:
+    desc: "Remove every frontend's dist + .build-artifacts output"
+    cmds:
+      - task: editor:clean
+
+  lint:
+    desc: "Run rustfmt + clippy with -D warnings (all features, tests)."
+    cmds:
+      - cargo fmt --all -- --check
+      - cargo clippy --all --all-features --tests -- -D warnings
+
+  worklets:
+    desc: "Build the example WASM worklets and embed them into the schema assets."
+    vars:
+      OUT: target/wasm32-unknown-unknown/release
+    cmds:
+      - cargo build --release --target wasm32-unknown-unknown -p awsm-audio-worklet-bitcrusher -p awsm-audio-worklet-drive -p awsm-audio-worklet-ringmod
+      - cp {{.OUT}}/awsm_audio_worklet_bitcrusher.wasm packages/crates/schema/assets/bitcrusher.wasm
+      - cp {{.OUT}}/awsm_audio_worklet_drive.wasm packages/crates/schema/assets/drive.wasm
+      - cp {{.OUT}}/awsm_audio_worklet_ringmod.wasm packages/crates/schema/assets/ringmod.wasm
+      - 'echo "Worklets embedded. Regenerate examples: WRITE_EXAMPLES=1 cargo test -p awsm-audio-schema write_example_files"'

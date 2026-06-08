@@ -1,0 +1,436 @@
+version = 1
+root = "8f5e275b-ae45-4b54-a06e-3a870f6ec60c"
+
+[[samples]]
+id = "8f5e275b-ae45-4b54-a06e-3a870f6ec60c"
+name = "Chord Stab"
+kind = "sound"
+
+[[samples.graph.nodes]]
+id = "219e0384-2329-4721-a528-1651cb1d4da5"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.5
+
+[[samples.graph.nodes]]
+id = "29d736ac-2419-4591-b9c8-8bbf1eca1551"
+
+[samples.graph.nodes.kind]
+kind = "sample"
+
+[samples.graph.nodes.kind.props]
+sample = "99a410bd-0927-4015-b30c-a9c2f5356ad7"
+
+[[samples.graph.nodes.kind.props.inputs]]
+port = "pitch"
+value = 220.0
+
+[[samples.graph.nodes.kind.props.inputs]]
+port = "cutoff"
+value = 1400.0
+
+[[samples.graph.nodes]]
+id = "c4c3d095-5fd0-454b-a463-74e69673df4e"
+
+[samples.graph.nodes.kind]
+kind = "stereo_panner"
+
+[samples.graph.nodes.kind.props.pan]
+value = -0.6000000238418579
+
+[[samples.graph.nodes]]
+id = "70fbce78-2308-4714-bfa0-6453abb923c2"
+
+[samples.graph.nodes.kind]
+kind = "sample"
+
+[samples.graph.nodes.kind.props]
+sample = "99a410bd-0927-4015-b30c-a9c2f5356ad7"
+
+[[samples.graph.nodes.kind.props.inputs]]
+port = "pitch"
+value = 261.6300048828125
+
+[[samples.graph.nodes.kind.props.inputs]]
+port = "cutoff"
+value = 1900.0
+
+[[samples.graph.nodes]]
+id = "93313330-3301-4ff1-b989-194234536734"
+
+[samples.graph.nodes.kind]
+kind = "stereo_panner"
+
+[samples.graph.nodes.kind.props.pan]
+value = -0.20000000298023224
+
+[[samples.graph.nodes]]
+id = "287fd7d3-77ac-49d9-bff9-c67c14f7a96d"
+
+[samples.graph.nodes.kind]
+kind = "sample"
+
+[samples.graph.nodes.kind.props]
+sample = "99a410bd-0927-4015-b30c-a9c2f5356ad7"
+
+[[samples.graph.nodes.kind.props.inputs]]
+port = "pitch"
+value = 329.6300048828125
+
+[[samples.graph.nodes.kind.props.inputs]]
+port = "cutoff"
+value = 2600.0
+
+[[samples.graph.nodes]]
+id = "6bed171a-bb71-48fa-bae8-42b36a31c68c"
+
+[samples.graph.nodes.kind]
+kind = "stereo_panner"
+
+[samples.graph.nodes.kind.props.pan]
+value = 0.25
+
+[[samples.graph.nodes]]
+id = "3e252222-b4f9-4e66-adcb-a37820da8331"
+
+[samples.graph.nodes.kind]
+kind = "sample"
+
+[samples.graph.nodes.kind.props]
+sample = "99a410bd-0927-4015-b30c-a9c2f5356ad7"
+
+[[samples.graph.nodes.kind.props.inputs]]
+port = "pitch"
+value = 392.0
+
+[[samples.graph.nodes.kind.props.inputs]]
+port = "cutoff"
+value = 3400.0
+
+[[samples.graph.nodes]]
+id = "8df28ae9-cc39-41c1-a367-1c2e2274336a"
+
+[samples.graph.nodes.kind]
+kind = "stereo_panner"
+
+[samples.graph.nodes.kind.props.pan]
+value = 0.6000000238418579
+
+[[samples.graph.nodes]]
+id = "dfeb4389-b5f3-4450-9ce6-1223654ab11a"
+
+[samples.graph.nodes.kind]
+kind = "audio_worklet"
+
+[samples.graph.nodes.kind.props]
+module = "0e5ef7d8-f201-4b37-a28d-6087469d9cea"
+processor_name = "drive"
+
+[[samples.graph.nodes.kind.props.parameters]]
+name = "drive"
+min = 1.0
+max = 30.0
+
+[samples.graph.nodes.kind.props.parameters.param]
+value = 6.0
+
+[[samples.graph.nodes.kind.props.parameters]]
+name = "mix"
+min = 0.0
+max = 1.0
+
+[samples.graph.nodes.kind.props.parameters.param]
+value = 0.8500000238418579
+
+[[samples.graph.nodes.kind.props.parameters]]
+name = "level"
+min = 0.0
+max = 1.0
+
+[samples.graph.nodes.kind.props.parameters.param]
+value = 0.699999988079071
+
+[[samples.graph.nodes]]
+id = "8a04d347-33ec-412c-9490-8d847d95a1c8"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.8999999761581421
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "29d736ac-2419-4591-b9c8-8bbf1eca1551"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "c4c3d095-5fd0-454b-a463-74e69673df4e"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "c4c3d095-5fd0-454b-a463-74e69673df4e"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "219e0384-2329-4721-a528-1651cb1d4da5"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "70fbce78-2308-4714-bfa0-6453abb923c2"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "93313330-3301-4ff1-b989-194234536734"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "93313330-3301-4ff1-b989-194234536734"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "219e0384-2329-4721-a528-1651cb1d4da5"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "287fd7d3-77ac-49d9-bff9-c67c14f7a96d"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "6bed171a-bb71-48fa-bae8-42b36a31c68c"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "6bed171a-bb71-48fa-bae8-42b36a31c68c"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "219e0384-2329-4721-a528-1651cb1d4da5"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "3e252222-b4f9-4e66-adcb-a37820da8331"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "8df28ae9-cc39-41c1-a367-1c2e2274336a"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "8df28ae9-cc39-41c1-a367-1c2e2274336a"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "219e0384-2329-4721-a528-1651cb1d4da5"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "219e0384-2329-4721-a528-1651cb1d4da5"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "dfeb4389-b5f3-4450-9ce6-1223654ab11a"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "dfeb4389-b5f3-4450-9ce6-1223654ab11a"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "8a04d347-33ec-412c-9490-8d847d95a1c8"
+input = 0
+
+[samples.trigger]
+release = 0.0
+
+[[samples]]
+id = "99a410bd-0927-4015-b30c-a9c2f5356ad7"
+name = "Voice"
+kind = "sound"
+
+[[samples.graph.nodes]]
+id = "59be541f-ee3a-4028-ab23-8122e1e51e99"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sawtooth"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 220.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "b4a28932-c0b5-41c1-8faa-832cf13f0375"
+
+[samples.graph.nodes.kind]
+kind = "biquad_filter"
+
+[samples.graph.nodes.kind.props]
+type = "lowpass"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 2000.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[samples.graph.nodes.kind.props.Q]
+value = 7.0
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "54517709-0308-41ae-ae95-56e43b69254f"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.00009999999747378752
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.0
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.4000000059604645
+time = 0.005
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 1.105
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "inlet"
+port = "pitch"
+
+[samples.graph.connections.to]
+to = "node_param"
+node = "59be541f-ee3a-4028-ab23-8122e1e51e99"
+param = "frequency"
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "inlet"
+port = "cutoff"
+
+[samples.graph.connections.to]
+to = "node_param"
+node = "b4a28932-c0b5-41c1-8faa-832cf13f0375"
+param = "frequency"
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "59be541f-ee3a-4028-ab23-8122e1e51e99"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "b4a28932-c0b5-41c1-8faa-832cf13f0375"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "b4a28932-c0b5-41c1-8faa-832cf13f0375"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "54517709-0308-41ae-ae95-56e43b69254f"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "54517709-0308-41ae-ae95-56e43b69254f"
+output = 0
+
+[samples.graph.connections.to]
+to = "outlet"
+port = "out"
+
+[[samples.graph.inlets]]
+id = "pitch"
+default = 220.0
+
+[[samples.graph.inlets]]
+id = "cutoff"
+default = 2000.0
+
+[[samples.graph.outlets]]
+id = "out"
+
+[samples.trigger]
+release = 0.0
+
+[[assets.wasm_modules]]
+id = "0e5ef7d8-f201-4b37-a28d-6087469d9cea"
+label = "drive"
+
+[assets.wasm_modules.source]
+kind = "base64"
+data = "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QQF2IQgLIABB////AHEhByABKAIEIQYgASgCACEFA0AgA0H//wNxIAhB//8DcU8NAkEBIQAgA0EBaiEDIAUgByAGKAIQEYCAgIAAgICAgABFDQAMBQsLIAEgASkCCCINp0GAgID/eXFBsICAgAJyNgIIQQEhACABKAIAIgUgASgCBCIGIAQgCRCQgICAAA0DQQAhAyAIIAdrQf//A3EhBwNAIANB//8DcSAHTw0CQQEhACADQQFqIQMgBUEwIAYoAhARgICAgACAgICAAEUNAAwECwtBASEAIAUgBiAEIAkQkICAgAANAiAFIAogCyAGKAIMEYGAgIAAgICAgAANAiAMIAhrQf//A3EhCEEAIQMDQAJAIANB//8DcSAISQ0AQQAhAAwEC0EBIQAgA0EBaiEDIAUgByAGKAIQEYCAgIAAgICAgABFDQAMAwsLQQEhACAFIAogCyAGKAIMEYGAgIAAgICAgAANASABIA03AghBACEADAELQQEhACABKAIAIgMgASgCBCIFIAQgCRCQgICAAA0AIAMgCiALIAUoAgwRgYCAgACAgICAACEACyACQRBqJICAgIAAIAALSQACQCACQYCAxABGDQAgACACIAEoAhARgICAgACAgICAAEUNAEEBDwsCQCADDQBBAA8LIAAgA0EAIAEoAgwRgYCAgACAgICAAAsJACAAQQA2AgALmQEBAn8jgICAgABBEGsiBCSAgICAAEEAQQAoApCUwIAAIgVBAWo2ApCUwIAAAkAgBUEASA0AAkACQEEALQCIlMCAAA0AQQBBACgChJTAgABBAWo2AoSUwIAAQQAoAoyUwIAAQX9KDQEMAgsgBEEIaiAAIAERgoCAgACAgICAAAALQQBBADoAiJTAgAAgAkUNABCTgICAAAALAAsDAAALCwAgABCVgICAAAALkAEBA38jgICAgABBEGsiASSAgICAAAJAIAAoAgAiAigCBCIDQQFxRQ0AIAIoAgAhAiABIANBAXY2AgQgASACNgIAIAFBgoCAgAAgACgCCCIALQAIIAAtAAkQkoCAgAAACyABQYCAgIB4NgIAIAEgADYCDCABQYOAgIAAIAAoAggiAC0ACCAALQAJEJKAgIAAAAsMACAAIAEpAgA3AwALFAAgASABIAAgACABXRsgACAAXBsLC4oDAQBBgIDAAAuAAyBpbmRleCBvdXQgb2YgYm91bmRzOiB0aGUgbGVuIGlzIMASIGJ1dCB0aGUgaW5kZXggaXMgwABwYWNrYWdlcy93b3JrbGV0cy9kcml2ZS9zcmMvbGliLnJzAAAANwAQACIAAAArAAAAAQAAAGRyaXZlbWl4bGV2ZWwAAABsABAABQAAAAAAgD8AAPBBAADAQHEAEAADAAAAAAAAAAAAgD8AAIA/dAAQAAUAAAAAAAAAAACAPzMzMz8wMDAxMDIwMzA0MDUwNjA3MDgwOTEwMTExMjEzMTQxNTE2MTcxODE5MjAyMTIyMjMyNDI1MjYyNzI4MjkzMDMxMzIzMzM0MzUzNjM3MzgzOTQwNDE0MjQzNDQ0NTQ2NDc0ODQ5NTA1MTUyNTM1NDU1NTY1NzU4NTk2MDYxNjI2MzY0NjU2NjY3Njg2OTcwNzE3MjczNzQ3NTc2Nzc3ODc5ODA4MTgyODM4NDg1ODY4Nzg4ODk5MDkxOTI5Mzk0OTU5Njk3OTg5OQCICARuYW1lAB4dYXdzbV9hdWRpb193b3JrbGV0X2RyaXZlLndhc20BwAcYAAhjaGFubmVscwEEaW5pdAIJaW5wdXRfcHRyAwpvdXRwdXRfcHRyBAtwYXJhbV9jb3VudAUNcGFyYW1fZGVmYXVsdAY3X1JOdk50Q3NnWEdwNU9xeDJOeV80Y29yZTlwYW5pY2tpbmcxOHBhbmljX2JvdW5kc19jaGVjawcJcGFyYW1fbWF4CAlwYXJhbV9taW4JDnBhcmFtX25hbWVfbGVuCg5wYXJhbV9uYW1lX3B0cgsKcGFyYW1zX3B0cgwHcHJvY2Vzcw0tX1JOdk50Q3NnWEdwNU9xeDJOeV80Y29yZTlwYW5pY2tpbmc5cGFuaWNfZm10Di5fUk52Q3NmTGZ5NkVJMTVpTF83X19fcnVzdGMxN3J1c3RfYmVnaW5fdW53aW5kDz9fUk52WHNpX050TnROdENzZ1hHcDVPcXgyTnlfNGNvcmUzZm10M251bTNpbXBqTnRCOV83RGlzcGxheTNmbXQQTl9STnZOdk1zYV9OdENzZ1hHcDVPcXgyTnlfNGNvcmUzZm10TnRCN185Rm9ybWF0dGVyMTJwYWRfaW50ZWdyYWwxMndyaXRlX3ByZWZpeBF1X1JOdllJTnROdk50Q3NlYkhjYWVvU3J4eV8zc3RkOXBhbmlja2luZzExYmVnaW5fcGFuaWM3UGF5bG9hZFJlRU50TnRDc2dYR3A1T3F4Mk55XzRjb3JlNXBhbmljMTJQYW5pY1BheWxvYWQ2YXNfc3RyQjlfEjNfUk52TnRDc2ViSGNhZW9Tcnh5XzNzdGQ5cGFuaWNraW5nMTVwYW5pY193aXRoX2hvb2sTJ19STnZDc2ZMZnk2RUkxNWlMXzdfX19ydXN0YzEwcnVzdF9wYW5pYxRuX1JJTnZOdE50Q3NlYkhjYWVvU3J4eV8zc3RkM3N5czliYWNrdHJhY2UyNl9fX3J1c3RfZW5kX3Nob3J0X2JhY2t0cmFjZU5DTnZOdEI2XzlwYW5pY2tpbmcxM3BhbmljX2hhbmRsZXIwekVCNl8VN19STkNOdk50Q3NlYkhjYWVvU3J4eV8zc3RkOXBhbmlja2luZzEzcGFuaWNfaGFuZGxlcjBCNV8WgAFfUk52WHMxX052TnRDc2ViSGNhZW9Tcnh5XzNzdGQ5cGFuaWNraW5nMTNwYW5pY19oYW5kbGVyTnRCNV8xNlN0YXRpY1N0clBheWxvYWROdE50Q3NnWEdwNU9xeDJOeV80Y29yZTVwYW5pYzEyUGFuaWNQYXlsb2FkNmFzX3N0chcFZm1heGYHEgEAD19fc3RhY2tfcG9pbnRlcgkKAQAHLnJvZGF0YQBNCXByb2R1Y2VycwIIbGFuZ3VhZ2UBBFJ1c3QADHByb2Nlc3NlZC1ieQEFcnVzdGMdMS45NS4wICg1OTgwNzYxNmUgMjAyNi0wNC0xNCkAlAEPdGFyZ2V0X2ZlYXR1cmVzCCsLYnVsay1tZW1vcnkrD2J1bGstbWVtb3J5LW9wdCsWY2FsbC1pbmRpcmVjdC1vdmVybG9uZysKbXVsdGl2YWx1ZSsPbXV0YWJsZS1nbG9iYWxzKxNub250cmFwcGluZy1mcHRvaW50Kw9yZWZlcmVuY2UtdHlwZXMrCHNpZ24tZXh0"

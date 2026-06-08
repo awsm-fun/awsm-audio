@@ -1,0 +1,96 @@
+version = 1
+root = "dc4a0cab-a8bd-4b34-981f-88e0bb69cee4"
+
+[[samples]]
+id = "dc4a0cab-a8bd-4b34-981f-88e0bb69cee4"
+name = "Siren"
+kind = "sound"
+
+[[samples.graph.nodes]]
+id = "ab7df3e2-910d-4624-87b9-9a89215dbccc"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sawtooth"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 600.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "7cdc8365-485f-4f44-ad48-50291049457c"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.30000001192092896
+
+[[samples.graph.nodes]]
+id = "bac6e78d-b923-4bb2-8f81-043860f876ee"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "triangle"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 0.5
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "cf0f77ec-d205-4ce8-a598-acb3b95d5ccd"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 250.0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "ab7df3e2-910d-4624-87b9-9a89215dbccc"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "7cdc8365-485f-4f44-ad48-50291049457c"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "bac6e78d-b923-4bb2-8f81-043860f876ee"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "cf0f77ec-d205-4ce8-a598-acb3b95d5ccd"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "cf0f77ec-d205-4ce8-a598-acb3b95d5ccd"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_param"
+node = "ab7df3e2-910d-4624-87b9-9a89215dbccc"
+param = "frequency"
+
+[samples.trigger]
+release = 0.0
+
+[assets]

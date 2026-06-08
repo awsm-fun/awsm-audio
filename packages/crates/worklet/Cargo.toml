@@ -1,0 +1,10 @@
+[package]
+name = "awsm-audio-worklet"
+description = "Write a WASM DSP processor for the awsm-audio AudioWorklet node."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]

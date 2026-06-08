@@ -1,0 +1,584 @@
+version = 1
+root = "e88d7a70-f791-4ecb-a062-8bdcd53ad554"
+
+[[samples]]
+id = "e88d7a70-f791-4ecb-a062-8bdcd53ad554"
+name = "Arrangement"
+kind = "arrangement"
+
+[samples.graph]
+
+[samples.trigger]
+release = 0.0
+
+[samples.arrangement]
+bpm = 110.0
+length_bars = 2
+
+[[samples.arrangement.tracks]]
+name = "Bass"
+instrument = "d9ba1979-87d5-43d2-9114-3f715d35d53a"
+
+[[samples.arrangement.tracks.clips]]
+start = 0.0
+length = 4.0
+name = "bass A"
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 0.0
+length = 0.9
+note = 36
+velocity = 110
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 1.0
+length = 0.45
+note = 36
+velocity = 90
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 1.5
+length = 0.45
+note = 43
+velocity = 90
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 2.0
+length = 0.9
+note = 41
+velocity = 100
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 3.0
+length = 0.9
+note = 39
+velocity = 90
+
+[[samples.arrangement.tracks.clips]]
+start = 4.0
+length = 4.0
+name = "bass B"
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 0.0
+length = 0.9
+note = 36
+velocity = 110
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 1.0
+length = 0.45
+note = 36
+velocity = 90
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 1.5
+length = 0.45
+note = 43
+velocity = 90
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 2.0
+length = 0.9
+note = 41
+velocity = 100
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 3.0
+length = 0.9
+note = 31
+velocity = 95
+
+[[samples.arrangement.tracks]]
+name = "Drums"
+instrument = "aa23af13-f3f5-40ce-90f9-c5e2b7f8e05a"
+is_drum = true
+
+[[samples.arrangement.tracks.clips]]
+start = 0.0
+length = 8.0
+name = "kick"
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 0.0
+length = 0.25
+note = 36
+velocity = 110
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 1.0
+length = 0.25
+note = 36
+velocity = 110
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 2.0
+length = 0.25
+note = 36
+velocity = 110
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 3.0
+length = 0.25
+note = 36
+velocity = 110
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 4.0
+length = 0.25
+note = 36
+velocity = 110
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 5.0
+length = 0.25
+note = 36
+velocity = 110
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 6.0
+length = 0.25
+note = 36
+velocity = 110
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 7.0
+length = 0.25
+note = 36
+velocity = 110
+
+[[samples.arrangement.tracks]]
+name = "Pad"
+instrument = "a48564ba-6dc0-4595-8b12-94c8b47cc3c1"
+
+[[samples.arrangement.tracks.clips]]
+start = 0.0
+length = 8.0
+name = "chords"
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 0.0
+length = 3.8
+note = 48
+velocity = 70
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 0.0
+length = 3.8
+note = 51
+velocity = 65
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 0.0
+length = 3.8
+note = 55
+velocity = 65
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 4.0
+length = 3.8
+note = 44
+velocity = 70
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 4.0
+length = 3.8
+note = 48
+velocity = 65
+
+[[samples.arrangement.tracks.clips.notes]]
+start = 4.0
+length = 3.8
+note = 51
+velocity = 65
+
+[[samples.arrangement.tracks]]
+name = "Riff"
+instrument = "800324fb-e10f-421c-bec8-b987ab7d9d73"
+
+[[samples.arrangement.tracks.clips]]
+start = 0.0
+length = 4.0
+name = "Riff"
+pattern = "800324fb-e10f-421c-bec8-b987ab7d9d73"
+
+[[samples]]
+id = "d9ba1979-87d5-43d2-9114-3f715d35d53a"
+name = "Bass"
+kind = "sound"
+
+[[samples.graph.nodes]]
+id = "dfbcbb71-8412-4295-b4d0-edb78c4f57a1"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sawtooth"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 261.6300048828125
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "636c2003-a0ca-4f0f-a8c6-b97e641babb8"
+
+[samples.graph.nodes.kind]
+kind = "biquad_filter"
+
+[samples.graph.nodes.kind.props]
+type = "lowpass"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 600.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[samples.graph.nodes.kind.props.Q]
+value = 4.0
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "e8f2e252-aa0b-40ad-a4eb-f9b482b1c5bf"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.00009999999747378752
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.0
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.699999988079071
+time = 0.005
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.355
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "dfbcbb71-8412-4295-b4d0-edb78c4f57a1"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "636c2003-a0ca-4f0f-a8c6-b97e641babb8"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "636c2003-a0ca-4f0f-a8c6-b97e641babb8"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "e8f2e252-aa0b-40ad-a4eb-f9b482b1c5bf"
+input = 0
+
+[samples.trigger]
+release = 0.0
+
+[[samples]]
+id = "aa23af13-f3f5-40ce-90f9-c5e2b7f8e05a"
+name = "Kick"
+kind = "sound"
+
+[[samples.graph.nodes]]
+id = "38f7146c-b15d-4dc0-aa76-d3a694236bd9"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sine"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 150.0
+
+[[samples.graph.nodes.kind.props.frequency.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.frequency.automation.args]
+value = 150.0
+time = 0.0
+
+[[samples.graph.nodes.kind.props.frequency.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.frequency.automation.args]
+value = 50.0
+time = 0.12
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "75d00237-206a-4aa4-8a4e-3083b59b8a38"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.00009999999747378752
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.0
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.949999988079071
+time = 0.002
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.28200000000000003
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "38f7146c-b15d-4dc0-aa76-d3a694236bd9"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "75d00237-206a-4aa4-8a4e-3083b59b8a38"
+input = 0
+
+[samples.trigger]
+release = 0.0
+
+[[samples]]
+id = "a48564ba-6dc0-4595-8b12-94c8b47cc3c1"
+name = "Pad"
+kind = "sound"
+
+[[samples.graph.nodes]]
+id = "769db583-505a-4633-89bd-36c1976ca341"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sawtooth"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 261.6300048828125
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "9e8fdf33-a890-4039-b1d0-5c407ab43ebf"
+
+[samples.graph.nodes.kind]
+kind = "biquad_filter"
+
+[samples.graph.nodes.kind.props]
+type = "lowpass"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 1200.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[samples.graph.nodes.kind.props.Q]
+value = 1.0
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "1f9ba334-e691-4d09-9ba1-ea0eca715490"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.00009999999747378752
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.0
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.44999998807907104
+time = 0.03
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 1.43
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "769db583-505a-4633-89bd-36c1976ca341"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "9e8fdf33-a890-4039-b1d0-5c407ab43ebf"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "9e8fdf33-a890-4039-b1d0-5c407ab43ebf"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "1f9ba334-e691-4d09-9ba1-ea0eca715490"
+input = 0
+
+[samples.trigger]
+release = 0.0
+
+[[samples]]
+id = "800324fb-e10f-421c-bec8-b987ab7d9d73"
+name = "Riff"
+kind = "sound"
+
+[[samples.graph.nodes]]
+id = "0ce2eb9b-a86d-43e5-88b3-db672d00b4c6"
+
+[samples.graph.nodes.kind]
+kind = "note_sequencer"
+
+[samples.graph.nodes.kind.props.song]
+bpm = 110.0
+
+[[samples.graph.nodes.kind.props.song.tracks]]
+name = "Lead"
+channel = 0
+
+[[samples.graph.nodes.kind.props.song.tracks.events]]
+start = 0.0
+length = 0.45
+note = 60
+velocity = 100
+
+[[samples.graph.nodes.kind.props.song.tracks.events]]
+start = 0.5
+length = 0.45
+note = 63
+velocity = 95
+
+[[samples.graph.nodes.kind.props.song.tracks.events]]
+start = 1.0
+length = 0.45
+note = 67
+velocity = 100
+
+[[samples.graph.nodes.kind.props.song.tracks.events]]
+start = 1.5
+length = 0.9
+note = 70
+velocity = 95
+
+[[samples.graph.nodes.kind.props.song.tracks.events]]
+start = 2.5
+length = 0.45
+note = 67
+velocity = 90
+
+[[samples.graph.nodes.kind.props.song.tracks.events]]
+start = 3.0
+length = 0.9
+note = 63
+velocity = 90
+
+[[samples.graph.nodes.kind.props.outputs]]
+key = "t0"
+track = 0
+label = "Lead"
+gain = 0.800000011920929
+
+[[samples.graph.nodes]]
+id = "96b13760-b95c-4f42-aaf2-d105f64e37df"
+
+[samples.graph.nodes.kind]
+kind = "sample"
+
+[samples.graph.nodes.kind.props]
+sample = "a48564ba-6dc0-4595-8b12-94c8b47cc3c1"
+
+[[samples.graph.nodes]]
+id = "aa1864b9-44ab-4847-a4ce-9d0138211404"
+
+[samples.graph.nodes.kind]
+kind = "output"
+
+[samples.graph.nodes.kind.props.gain]
+value = 1.0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "seq_out"
+node = "0ce2eb9b-a86d-43e5-88b3-db672d00b4c6"
+key = "t0"
+
+[samples.graph.connections.to]
+to = "trigger"
+node = "96b13760-b95c-4f42-aaf2-d105f64e37df"
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "96b13760-b95c-4f42-aaf2-d105f64e37df"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "aa1864b9-44ab-4847-a4ce-9d0138211404"
+input = 0
+
+[samples.trigger]
+release = 0.0
+
+[assets]

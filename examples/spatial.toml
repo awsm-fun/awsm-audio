@@ -1,0 +1,92 @@
+version = 1
+root = "28df08d4-d014-42e5-9edd-36abdb7c3158"
+
+[[samples]]
+id = "28df08d4-d014-42e5-9edd-36abdb7c3158"
+name = "Spatial"
+kind = "sound"
+
+[[samples.graph.nodes]]
+id = "46d4da8c-23d6-4966-b2d3-0d38b4d687f9"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "triangle"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 330.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "c2e8eaba-8480-4afd-b420-859ce1bdcdea"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.5
+
+[[samples.graph.nodes]]
+id = "aa6b0db1-f5d7-49ec-9a35-6125d8ab82a2"
+
+[samples.graph.nodes.kind]
+kind = "spatial_output"
+
+[samples.graph.nodes.kind.props.gain]
+value = 1.0
+
+[samples.graph.nodes.kind.props.position_x]
+value = -6.0
+
+[[samples.graph.nodes.kind.props.position_x.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.position_x.automation.args]
+value = -6.0
+time = 0.0
+
+[[samples.graph.nodes.kind.props.position_x.automation]]
+event = "linear_ramp"
+
+[samples.graph.nodes.kind.props.position_x.automation.args]
+value = 6.0
+time = 4.0
+
+[samples.graph.nodes.kind.props.position_y]
+value = 0.0
+
+[samples.graph.nodes.kind.props.position_z]
+value = -1.5
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "46d4da8c-23d6-4966-b2d3-0d38b4d687f9"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "c2e8eaba-8480-4afd-b420-859ce1bdcdea"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "c2e8eaba-8480-4afd-b420-859ce1bdcdea"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "aa6b0db1-f5d7-49ec-9a35-6125d8ab82a2"
+input = 0
+
+[samples.trigger]
+release = 0.0
+
+[assets]

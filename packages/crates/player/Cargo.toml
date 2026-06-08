@@ -1,0 +1,28 @@
+[package]
+name = "awsm-audio-player"
+description = "WebAudio playback engine for awsm-audio."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[package.metadata.docs.rs]
+default-target = "wasm32-unknown-unknown"
+all-features = true
+# WebAudio worklet APIs in web-sys require this cfg flag
+rustc-args = ["--cfg=web_sys_unstable_apis"]
+rustdoc-args = ["--cfg=web_sys_unstable_apis"]
+
+[dependencies]
+awsm-audio-schema = { workspace = true }
+
+fastrand = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+js-sys = { workspace = true }
+web-sys = { workspace = true }

@@ -1,0 +1,83 @@
+version = 1
+root = "42fa49a8-6a5b-4635-9852-8175ee080471"
+
+[[samples]]
+id = "42fa49a8-6a5b-4635-9852-8175ee080471"
+name = "Kick"
+kind = "sound"
+
+[[samples.graph.nodes]]
+id = "646441ff-ec79-4c50-82a6-1780de1777f9"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sine"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 150.0
+
+[[samples.graph.nodes.kind.props.frequency.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.frequency.automation.args]
+value = 150.0
+time = 0.0
+
+[[samples.graph.nodes.kind.props.frequency.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.frequency.automation.args]
+value = 50.0
+time = 0.12
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "fbebeb3c-40a0-412e-9269-99df610a8cbb"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.00009999999747378752
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.0
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.949999988079071
+time = 0.002
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.28200000000000003
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "646441ff-ec79-4c50-82a6-1780de1777f9"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "fbebeb3c-40a0-412e-9269-99df610a8cbb"
+input = 0
+
+[samples.trigger]
+release = 0.0
+
+[assets]

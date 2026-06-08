@@ -1,0 +1,261 @@
+version = 1
+root = "a862abf7-5b1e-4ec5-b923-ce8636124f42"
+
+[[samples]]
+id = "a862abf7-5b1e-4ec5-b923-ce8636124f42"
+name = "Rain"
+kind = "sound"
+
+[[samples.graph.nodes]]
+id = "4ee9f111-77bd-4bc3-9bfa-3f92770f4a54"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.8999999761581421
+
+[[samples.graph.nodes]]
+id = "ed5628cb-0f66-48f7-8342-08ab231c7530"
+
+[samples.graph.nodes.kind]
+kind = "noise"
+
+[samples.graph.nodes.kind.props]
+flavor = "brown"
+seed = 11
+seconds = 3.0
+stereo = true
+density = 0.0
+gaussian = false
+
+[[samples.graph.nodes]]
+id = "77f1dc5a-2f8d-4b29-8920-fc8185dd0fe0"
+
+[samples.graph.nodes.kind]
+kind = "biquad_filter"
+
+[samples.graph.nodes.kind.props]
+type = "lowpass"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 900.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[samples.graph.nodes.kind.props.Q]
+value = 0.699999988079071
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "0cf5d03c-2968-479e-9799-7af515473370"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.5
+
+[[samples.graph.nodes]]
+id = "45a2b83f-707e-4804-a2a2-9c24776522e9"
+
+[samples.graph.nodes.kind]
+kind = "noise"
+
+[samples.graph.nodes.kind.props]
+flavor = "pink"
+seed = 22
+seconds = 3.0
+stereo = true
+density = 0.0
+gaussian = false
+
+[[samples.graph.nodes]]
+id = "23be3d96-b37e-4982-8649-18cd176f2df6"
+
+[samples.graph.nodes.kind]
+kind = "biquad_filter"
+
+[samples.graph.nodes.kind.props]
+type = "highpass"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 2000.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[samples.graph.nodes.kind.props.Q]
+value = 0.699999988079071
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "b21fa591-321f-481f-8b7e-b0667b71a958"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.18000000715255737
+
+[[samples.graph.nodes]]
+id = "4527e6b1-af32-4847-8ba8-60a508ec7bb4"
+
+[samples.graph.nodes.kind]
+kind = "noise"
+
+[samples.graph.nodes.kind.props]
+flavor = "dust"
+seed = 33
+seconds = 3.0
+stereo = true
+density = 1200.0
+gaussian = false
+
+[[samples.graph.nodes]]
+id = "f709ecc3-5761-4cf5-93bf-c6eb6edb3b09"
+
+[samples.graph.nodes.kind]
+kind = "biquad_filter"
+
+[samples.graph.nodes.kind.props]
+type = "bandpass"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 3000.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[samples.graph.nodes.kind.props.Q]
+value = 1.5
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "b2d27561-a831-4263-839f-82800f6eae00"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.5
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "ed5628cb-0f66-48f7-8342-08ab231c7530"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "77f1dc5a-2f8d-4b29-8920-fc8185dd0fe0"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "77f1dc5a-2f8d-4b29-8920-fc8185dd0fe0"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "0cf5d03c-2968-479e-9799-7af515473370"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "0cf5d03c-2968-479e-9799-7af515473370"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "4ee9f111-77bd-4bc3-9bfa-3f92770f4a54"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "45a2b83f-707e-4804-a2a2-9c24776522e9"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "23be3d96-b37e-4982-8649-18cd176f2df6"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "23be3d96-b37e-4982-8649-18cd176f2df6"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "b21fa591-321f-481f-8b7e-b0667b71a958"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "b21fa591-321f-481f-8b7e-b0667b71a958"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "4ee9f111-77bd-4bc3-9bfa-3f92770f4a54"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "4527e6b1-af32-4847-8ba8-60a508ec7bb4"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "f709ecc3-5761-4cf5-93bf-c6eb6edb3b09"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "f709ecc3-5761-4cf5-93bf-c6eb6edb3b09"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "b2d27561-a831-4263-839f-82800f6eae00"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "b2d27561-a831-4263-839f-82800f6eae00"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "4ee9f111-77bd-4bc3-9bfa-3f92770f4a54"
+input = 0
+
+[samples.trigger]
+release = 0.0
+
+[assets]

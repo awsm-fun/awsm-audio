@@ -1,0 +1,101 @@
+version = 1
+root = "64e6b2ea-abde-4daf-bb96-5a0f76b8fce8"
+
+[[samples]]
+id = "64e6b2ea-abde-4daf-bb96-5a0f76b8fce8"
+name = "Hi-hat"
+kind = "sound"
+
+[[samples.graph.nodes]]
+id = "57c4a9ec-daf8-4394-b1a1-28882ff083f0"
+
+[samples.graph.nodes.kind]
+kind = "noise"
+
+[samples.graph.nodes.kind.props]
+flavor = "white"
+seed = 5
+seconds = 1.0
+stereo = true
+density = 0.0
+gaussian = false
+
+[[samples.graph.nodes]]
+id = "33ed0b01-a4cb-4abb-9b74-c8617c5eca54"
+
+[samples.graph.nodes.kind]
+kind = "biquad_filter"
+
+[samples.graph.nodes.kind.props]
+type = "highpass"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 7000.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[samples.graph.nodes.kind.props.Q]
+value = 0.800000011920929
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "670341bf-9be3-4423-96d4-4320e63d3692"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.00009999999747378752
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.0
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.699999988079071
+time = 0.001
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.061
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "57c4a9ec-daf8-4394-b1a1-28882ff083f0"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "33ed0b01-a4cb-4abb-9b74-c8617c5eca54"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "33ed0b01-a4cb-4abb-9b74-c8617c5eca54"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "670341bf-9be3-4423-96d4-4320e63d3692"
+input = 0
+
+[samples.trigger]
+release = 0.0
+
+[assets]

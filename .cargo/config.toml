@@ -1,0 +1,9 @@
+# `web_sys_unstable_apis` unlocks the still-unstable corners of the WebAudio
+# bindings (AudioWorklet*, etc.) on top of the stable node set. Mirrors the
+# awsm-renderer setup so the IDE and `cargo` agree across host + wasm targets.
+[target.wasm32-unknown-unknown]
+rustflags = ["--cfg=web_sys_unstable_apis"]
+
+# even though we don't really need this for all crates, it's easier to make the IDE happy this way
+[target.'cfg(not(target_arch = "wasm32"))']
+rustflags = ["--cfg=web_sys_unstable_apis"]

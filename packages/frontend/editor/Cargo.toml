@@ -1,0 +1,63 @@
+[package]
+name = "awsm-audio-editor"
+publish = false  # frontend app, not released to crates.io
+description = "WebAudio authoring tool for awsm-audio."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+awsm-audio-player = { workspace = true }
+awsm-audio-schema = { workspace = true }
+
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-wasm = { workspace = true }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+js-sys = { workspace = true }
+console_error_panic_hook = { workspace = true }
+base64 = { workspace = true }
+
+dominator = { workspace = true }
+futures-signals = { workspace = true }
+
+serde = { workspace = true, features = ["derive"] }
+toml = { workspace = true }
+uuid = { version = "1.11.0", features = ["v4", "serde", "js"] }
+
+# Additive on top of the workspace web-sys baseline: pointer/wheel/keyboard
+# events and DomRect for the pan/zoom canvas coordinate math.
+[dependencies.web-sys]
+workspace = true
+features = [
+    "MouseEvent",
+    "PointerEvent",
+    "WheelEvent",
+    "KeyboardEvent",
+    "DomRect",
+    "HtmlInputElement",
+    "HtmlSelectElement",
+    "HtmlCanvasElement",
+    "CanvasRenderingContext2d",
+    "File",
+    "FileList",
+    "Blob",
+    "Url",
+    # File System Access API — directory-based projects (Chromium-only; gated
+    # behind the workspace's `web_sys_unstable_apis` cfg).
+    "DirectoryPickerOptions",
+    "FileSystemHandle",
+    "FileSystemHandleKind",
+    "FileSystemPermissionMode",
+    "FileSystemHandlePermissionDescriptor",
+    "FileSystemDirectoryHandle",
+    "FileSystemFileHandle",
+    "FileSystemWritableFileStream",
+    "FileSystemGetDirectoryOptions",
+    "FileSystemGetFileOptions",
+    "FileSystemCreateWritableOptions",
+]

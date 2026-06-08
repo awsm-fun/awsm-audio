@@ -1,0 +1,15 @@
+[package]
+name = "awsm-audio-worklet-drive"
+description = "Example WASM DSP processor: tanh saturation / overdrive."
+publish = false
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+awsm-audio-worklet = { workspace = true }

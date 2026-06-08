@@ -1,0 +1,206 @@
+[workspace]
+members = [
+    "packages/crates/schema",
+    "packages/crates/player",
+    "packages/crates/worklet",
+    "packages/frontend/editor",
+    "packages/worklets/bitcrusher",
+    "packages/worklets/drive",
+    "packages/worklets/ringmod",
+]
+resolver = "2"
+
+[workspace.package]
+description = "awsm audio"
+edition = "2021"
+version = "0.1.0"
+license = "MIT"
+authors = ["David Komer"]
+rust-version = "1.80.0"
+repository = "https://github.com/dakom/awsm-audio"
+
+### Patches
+
+# dominator 0.5.38 on crates.io is incompatible with web_sys_unstable_apis (mouse/scroll types became f64).
+# Fix landed on master (commit 25597cd) but isn't published yet. We enable the
+# unstable cfg for the WebAudio worklet bindings, so we need the patched dominator.
+[patch.crates-io]
+dominator = { git = "https://github.com/Pauan/rust-dominator", rev = "25597cd" }
+
+### Profiles
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+panic = 'abort'
+incremental = false
+overflow-checks = true
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+### Dependencies
+
+[workspace.dependencies]
+
+# Internal awsm-audio-* crates. Version kept in lockstep with
+# `workspace.package.version` so published crates carry concrete version reqs.
+awsm-audio-schema = { path = "packages/crates/schema", version = "0.1.0" }
+awsm-audio-player = { path = "packages/crates/player", version = "0.1.0" }
+awsm-audio-worklet = { path = "packages/crates/worklet", version = "0.1.0" }
+
+# Error handling
+anyhow = "1.0.102"
+thiserror = "2.0.18"
+
+# Data formats
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+
+# Fast, deterministic (seedable) PRNG for noise synthesis. no_std, no getrandom.
+fastrand = { version = "2.3.0", default-features = false }
+# TOML is the authored on-disk format for schema documents (hand-editable).
+toml = "0.8"
+
+# Async
+futures = "0.3.32"
+
+# Logging
+tracing = "0.1.44"
+tracing-wasm = "0.2.1"
+
+# Browser bindings and helpers
+wasm-bindgen = "0.2.118"
+js-sys = "0.3.95"
+wasm-bindgen-futures = "0.4.68"
+console_error_panic_hook = "0.1.7"
+
+# Inline (base64) WASM module assets in saved projects
+base64 = "0.22"
+
+# Standard MIDI File (.mid) parsing for the song sequencer. `parallel` (rayon)
+# is disabled — it doesn't build on wasm32-unknown-unknown (no threads).
+midly = { version = "0.5", default-features = false, features = ["std"] }
+
+# Frontend (dominator stack)
+dominator = "0.5.38"
+futures-signals = "0.3.34"
+
+[workspace.dependencies.web-sys]
+version = "0.3.95"
+features = [
+    # General DOM surface the editor reaches for.
+    "console",
+    "Window",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "Navigator",
+    "Performance",
+    "Event",
+    "EventTarget",
+
+    # ---- WebAudio: contexts ----
+    "AudioContext",
+    "AudioContextOptions",
+    "AudioContextState",
+    "AudioContextLatencyCategory",
+    "BaseAudioContext",
+    "OfflineAudioContext",
+
+    # ---- WebAudio: graph plumbing ----
+    "AudioNode",
+    "AudioNodeOptions",
+    "AudioParam",
+    "AudioParamMap",
+    "AudioDestinationNode",
+    "AudioListener",
+    "ChannelCountMode",
+    "ChannelInterpretation",
+    "AudioScheduledSourceNode",
+
+    # ---- WebAudio: buffers + sources ----
+    "AudioBuffer",
+    "AudioBufferOptions",
+    "AudioBufferSourceNode",
+    "AudioBufferSourceOptions",
+    "OscillatorNode",
+    "OscillatorOptions",
+    "OscillatorType",
+    "ConstantSourceNode",
+    "ConstantSourceOptions",
+    "PeriodicWave",
+    "PeriodicWaveOptions",
+    "PeriodicWaveConstraints",
+
+    # ---- WebAudio: processing nodes ----
+    "GainNode",
+    "GainOptions",
+    "BiquadFilterNode",
+    "BiquadFilterOptions",
+    "BiquadFilterType",
+    "DelayNode",
+    "DelayOptions",
+    "DynamicsCompressorNode",
+    "DynamicsCompressorOptions",
+    "ConvolverNode",
+    "ConvolverOptions",
+    "WaveShaperNode",
+    "WaveShaperOptions",
+    "OverSampleType",
+    "IirFilterNode",
+    "IirFilterOptions",
+    "AnalyserNode",
+    "AnalyserOptions",
+    # Real-time export: tap the master into a ScriptProcessor and capture samples.
+    "ScriptProcessorNode",
+    "AudioProcessingEvent",
+
+    # ---- WebAudio: spatialization + routing ----
+    "PannerNode",
+    "PannerOptions",
+    "PanningModelType",
+    "DistanceModelType",
+    "StereoPannerNode",
+    "StereoPannerOptions",
+    "ChannelMergerNode",
+    "ChannelMergerOptions",
+    "ChannelSplitterNode",
+    "ChannelSplitterOptions",
+
+    # ---- WebAudio: media bridges ----
+    "MediaElementAudioSourceNode",
+    "MediaElementAudioSourceOptions",
+    "MediaStreamAudioSourceNode",
+    "MediaStreamAudioSourceOptions",
+    "MediaStreamAudioDestinationNode",
+    "MediaStream",
+    "HtmlMediaElement",
+    "HtmlAudioElement",
+
+    # ---- WebAudio: worklets (unstable; needs web_sys_unstable_apis) ----
+    "Worklet",
+    "WorkletOptions",
+    "AudioWorklet",
+    "AudioWorkletNode",
+    "AudioWorkletNodeOptions",
+
+    # ---- Blob URLs (inline AudioWorklet shim module) ----
+    "Blob",
+    "BlobPropertyBag",
+    "Url",
+
+    # ---- fetch (URL-sourced buffer / wasm assets) ----
+    "Response",
+
+    # ---- microphone capture (MediaStream source) ----
+    "MediaDevices",
+    "MediaStreamConstraints",
+]

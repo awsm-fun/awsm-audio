@@ -1,0 +1,504 @@
+version = 1
+root = "e7c3613f-d6c3-40c9-be6a-95d875b84b5a"
+
+[[samples]]
+id = "e7c3613f-d6c3-40c9-be6a-95d875b84b5a"
+name = "Bell"
+kind = "sound"
+
+[[samples.graph.nodes]]
+id = "baa31f62-d551-4f21-a1cb-33598dd989c4"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.550000011920929
+
+[[samples.graph.nodes]]
+id = "43aea868-7342-4f5e-b381-66ed8f9aa15f"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sine"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 246.39999389648438
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "b2068a8d-a4b8-4c37-8078-c216c9b10aa4"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.00009999999747378752
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.0
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.5
+time = 0.004
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 3.204
+
+[[samples.graph.nodes]]
+id = "511a95c8-9c6c-487b-8d83-552475dbc51b"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sine"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 404.8000183105469
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "ce5a97a3-36c2-47ec-b881-a3493db2dbee"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.00009999999747378752
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.0
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.3499999940395355
+time = 0.004
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 2.604
+
+[[samples.graph.nodes]]
+id = "0dd4dd86-99d8-47c7-b817-55b9167c8bf6"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sine"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 523.6000366210938
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "2d270613-f765-4333-9a6a-a45f3a9ec8d6"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.00009999999747378752
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.0
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.30000001192092896
+time = 0.004
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 2.204
+
+[[samples.graph.nodes]]
+id = "a6436377-8ad3-48b6-896f-c511f17791fd"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sine"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 752.4000244140625
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "9c33ed11-b590-441d-8779-76a483fb6a5c"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.00009999999747378752
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.0
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.2199999988079071
+time = 0.004
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 1.604
+
+[[samples.graph.nodes]]
+id = "c41a71b4-7340-4311-ab37-d4439af545bd"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sine"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 880.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "a7ff8254-97f3-48f7-b022-5b4423e4925b"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.00009999999747378752
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.0
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.44999998807907104
+time = 0.004
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 3.004
+
+[[samples.graph.nodes]]
+id = "d5bb8504-5a62-490c-8dca-89bb0c733ad5"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sine"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 1205.5999755859375
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "38e156d0-11ac-45fb-9144-bfea18705a7b"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.00009999999747378752
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.0
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.18000000715255737
+time = 0.004
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 1.204
+
+[[samples.graph.nodes]]
+id = "7d710756-5e84-4bfa-9e29-c035accee05a"
+
+[samples.graph.nodes.kind]
+kind = "oscillator"
+
+[samples.graph.nodes.kind.props]
+type = "sine"
+
+[samples.graph.nodes.kind.props.frequency]
+value = 1320.0
+
+[samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[samples.graph.nodes]]
+id = "d06b4b56-81df-4247-8c04-e4c8909c9785"
+
+[samples.graph.nodes.kind]
+kind = "gain"
+
+[samples.graph.nodes.kind.props.gain]
+value = 0.00009999999747378752
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "set_value"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.0
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.15000000596046448
+time = 0.004
+
+[[samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 1.004
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "43aea868-7342-4f5e-b381-66ed8f9aa15f"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "b2068a8d-a4b8-4c37-8078-c216c9b10aa4"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "b2068a8d-a4b8-4c37-8078-c216c9b10aa4"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "baa31f62-d551-4f21-a1cb-33598dd989c4"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "511a95c8-9c6c-487b-8d83-552475dbc51b"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "ce5a97a3-36c2-47ec-b881-a3493db2dbee"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "ce5a97a3-36c2-47ec-b881-a3493db2dbee"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "baa31f62-d551-4f21-a1cb-33598dd989c4"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "0dd4dd86-99d8-47c7-b817-55b9167c8bf6"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "2d270613-f765-4333-9a6a-a45f3a9ec8d6"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "2d270613-f765-4333-9a6a-a45f3a9ec8d6"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "baa31f62-d551-4f21-a1cb-33598dd989c4"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "a6436377-8ad3-48b6-896f-c511f17791fd"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "9c33ed11-b590-441d-8779-76a483fb6a5c"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "9c33ed11-b590-441d-8779-76a483fb6a5c"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "baa31f62-d551-4f21-a1cb-33598dd989c4"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "c41a71b4-7340-4311-ab37-d4439af545bd"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "a7ff8254-97f3-48f7-b022-5b4423e4925b"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "a7ff8254-97f3-48f7-b022-5b4423e4925b"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "baa31f62-d551-4f21-a1cb-33598dd989c4"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "d5bb8504-5a62-490c-8dca-89bb0c733ad5"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "38e156d0-11ac-45fb-9144-bfea18705a7b"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "38e156d0-11ac-45fb-9144-bfea18705a7b"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "baa31f62-d551-4f21-a1cb-33598dd989c4"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "7d710756-5e84-4bfa-9e29-c035accee05a"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "d06b4b56-81df-4247-8c04-e4c8909c9785"
+input = 0
+
+[[samples.graph.connections]]
+
+[samples.graph.connections.from]
+from = "node_output"
+node = "d06b4b56-81df-4247-8c04-e4c8909c9785"
+output = 0
+
+[samples.graph.connections.to]
+to = "node_input"
+node = "baa31f62-d551-4f21-a1cb-33598dd989c4"
+input = 0
+
+[samples.trigger]
+release = 0.0
+
+[assets]

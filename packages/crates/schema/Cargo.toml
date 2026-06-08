@@ -1,0 +1,23 @@
+[package]
+name = "awsm-audio-schema"
+description = "Authored WebAudio sample/graph schema consumed by the awsm-audio editor + player."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
+uuid = { version = "1.11.0", features = ["v4", "serde", "js"] }
+# Encodes the bundled example WASM module inline in the `crush` example.
+base64 = { workspace = true }
+# Standard MIDI File parsing for the Note Sequencer (and Control Sequencer CC import).
+midly = { workspace = true }
+
+[dev-dependencies]
+# Format-agnostic schema: TOML is only used to exercise round-tripping in tests.
+# Consumers (editor/player) choose the format at the call site.
+toml = { workspace = true }
