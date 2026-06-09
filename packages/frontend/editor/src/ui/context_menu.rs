@@ -146,11 +146,6 @@ fn items_for(target: ContextTarget) -> Vec<Dom> {
                 vec![menu_item_disabled("Nothing to paste")]
             }
         }
-        ContextTarget::SampleTab(id) => vec![menu_item("Clone", move || {
-            let c = controller();
-            c.clone_sample(id);
-            c.close_context_menu();
-        })],
     }
 }
 

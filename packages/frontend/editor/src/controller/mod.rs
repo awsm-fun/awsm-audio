@@ -85,6 +85,9 @@ pub struct EditorController {
     pub help: Mutable<Option<crate::catalog::NodeDoc>>,
     /// Whether the "Load example" browser modal is open.
     pub examples_open: Mutable<bool>,
+    /// Whether the sample picker modal (the scalable replacement for the inline
+    /// tab strip) is open.
+    pub sample_picker_open: Mutable<bool>,
     /// Whether the page Help / onboarding modal is open.
     pub help_open: Mutable<bool>,
     /// Open node context menu: `(node, screen_x, screen_y)`.
@@ -205,8 +208,6 @@ pub enum ContextTarget {
     Sound(awsm_audio_schema::SampleId),
     /// Empty lane space at `(track, secs)` (Paste here / Paste at playhead).
     Lane { track: usize, secs: f64 },
-    /// A sample tab in the top strip (Clone).
-    SampleTab(awsm_audio_schema::SampleId),
 }
 
 /// A Sound's bounce state, for the assets view + sample badges.
@@ -267,6 +268,7 @@ impl EditorController {
             looping: Mutable::new(false),
             help: Mutable::new(None),
             examples_open: Mutable::new(false),
+            sample_picker_open: Mutable::new(false),
             help_open: Mutable::new(false),
             context_menu: Mutable::new(None),
             inspected: Mutable::new(None),
@@ -1249,7 +1251,10 @@ impl EditorController {
             EditorCommand::EditSong { node, op } => self.edit_song_op(node, op),
             EditorCommand::EditControl { node, op } => self.edit_control_op(node, op),
             EditorCommand::EditArrange { op } => self.edit_arrange_op(op),
-            EditorCommand::Bounce { sample } => self.bounce_sample(sample),
+            EditorCommand::Bounce {
+                sample,
+                duration_secs,
+            } => self.bounce_sample(sample, duration_secs),
 
             EditorCommand::SelectNodes { ids, additive } => {
                 self.set_selection(&ids, additive);
@@ -1296,16 +1301,36 @@ impl EditorController {
             EditorQuery::Samples => {
                 let root = *self.root.borrow();
                 let active = *self.active.borrow();
+                // Snapshot the ids/kinds first so we don't hold the `samples`
+                // borrow while `bounce_status` / `bounce_duration` re-borrow it.
+                let rows: Vec<_> = self
+                    .samples
+                    .borrow()
+                    .iter()
+                    .map(|s| (s.sample.id, s.sample.name.clone(), s.sample.kind))
+                    .collect();
                 QueryResult::Samples(
-                    self.samples
-                        .borrow()
-                        .iter()
-                        .map(|s| SampleInfo {
-                            id: s.sample.id,
-                            name: s.sample.name.clone(),
-                            kind: s.sample.kind,
-                            is_root: s.sample.id == root,
-                            is_active: s.sample.id == active,
+                    rows.into_iter()
+                        .map(|(id, name, kind)| {
+                            // Bounce state only applies to Sounds.
+                            let (bounce, duration_secs) =
+                                if kind == awsm_audio_schema::SampleKind::Sound {
+                                    (
+                                        Some(self.bounce_status(id).as_str().to_string()),
+                                        self.bounce_duration(id),
+                                    )
+                                } else {
+                                    (None, None)
+                                };
+                            SampleInfo {
+                                id,
+                                name,
+                                kind,
+                                is_root: id == root,
+                                is_active: id == active,
+                                bounce,
+                                duration_secs,
+                            }
                         })
                         .collect(),
                 )
@@ -2896,6 +2921,11 @@ impl EditorController {
                     c.looping = looping;
                 }
             }),
+            ArrangeOp::Clear => self.edit_arrange(true, |a| {
+                for t in &mut a.tracks {
+                    t.clips.clear();
+                }
+            }),
         }
     }
 
@@ -3199,6 +3229,7 @@ impl EditorController {
     fn bounce_job_for(
         &self,
         id: awsm_audio_schema::SampleId,
+        duration_override: Option<f64>,
     ) -> Option<(awsm_audio_player::bounce::BounceJob, String)> {
         use awsm_audio_schema::{NodeKind, SampleKind};
         self.commit_active();
@@ -3242,6 +3273,9 @@ impl EditorController {
                 None,
             )
         };
+        // An explicit override wins (e.g. capture a fixed span of a procedural /
+        // worklet source that otherwise renders only a tiny default).
+        let duration = duration_override.map(|d| d.max(0.05)).unwrap_or(duration);
         let job = self.player.borrow().as_ref()?.bounce_job(
             graph,
             parts,
@@ -3261,6 +3295,7 @@ impl EditorController {
         &self,
         sample: Option<awsm_audio_schema::SampleId>,
         sample_rate: Option<f32>,
+        duration_secs: Option<f64>,
     ) -> Result<(Vec<Vec<f32>>, u32), String> {
         let id = sample.unwrap_or_else(|| *self.root.borrow());
         // Arrangements render through their clip timeline, not the bounce graph.
@@ -3268,7 +3303,7 @@ impl EditorController {
             return self.render_arrangement_pcm(id).await;
         }
         let (mut job, _label) = self
-            .bounce_job_for(id)
+            .bounce_job_for(id, duration_secs)
             .ok_or_else(|| "nothing to render".to_string())?;
         if let Some(sr) = sample_rate {
             job.sample_rate = sr;
@@ -3313,9 +3348,9 @@ impl EditorController {
     /// Render a Sound to an audio buffer (offline) and store it as the sample's
     /// bounce — so arrangement clips can play + draw it. Async; bumps `samples_rev`
     /// when done. No-op for an Arrangement sample.
-    pub fn bounce_sample(&self, id: awsm_audio_schema::SampleId) {
+    pub fn bounce_sample(&self, id: awsm_audio_schema::SampleId, duration_secs: Option<f64>) {
         use awsm_audio_schema::{AudioSource, BufferAsset};
-        let Some((job, name)) = self.bounce_job_for(id) else {
+        let Some((job, name)) = self.bounce_job_for(id, duration_secs) else {
             return;
         };
         let hash = self.deep_source_hash(id);
@@ -3383,7 +3418,7 @@ impl EditorController {
             let rendered = if is_arrangement {
                 ctrl.render_arrangement_pcm(id).await
             } else {
-                ctrl.render_pcm(Some(id), None).await
+                ctrl.render_pcm(Some(id), None, None).await
             };
             match rendered {
                 Ok((channels, sr)) => {
@@ -3844,6 +3879,15 @@ impl EditorController {
     }
     pub fn close_examples(&self) {
         self.examples_open.set(false);
+    }
+
+    /// Open / close the sample picker modal (the scalable replacement for the
+    /// inline tab strip — a filterable list of the current view's samples).
+    pub fn open_sample_picker(&self) {
+        self.sample_picker_open.set(true);
+    }
+    pub fn close_sample_picker(&self) {
+        self.sample_picker_open.set(false);
     }
 
     /// Open / close the page Help / onboarding modal.
@@ -4423,11 +4467,6 @@ impl EditorController {
     pub fn open_lane_menu(&self, track: usize, secs: f64, x: f64, y: f64) {
         self.context_menu
             .set(Some((ContextTarget::Lane { track, secs }, x, y)));
-    }
-    /// Open the context menu on a sample tab in the top strip (Clone).
-    pub fn open_sample_tab_menu(&self, id: awsm_audio_schema::SampleId, x: f64, y: f64) {
-        self.context_menu
-            .set(Some((ContextTarget::SampleTab(id), x, y)));
     }
     pub fn close_context_menu(&self) {
         self.context_menu.set(None);

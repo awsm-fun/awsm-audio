@@ -82,8 +82,15 @@ pub enum EditorCommand {
     /// Render a Sound (`sample`) offline to a PCM buffer and store it as that
     /// sample's [`Bounce`](awsm_audio_schema::Bounce). Mutates the document (the
     /// bounce + embedded buffer), so it's a command — and MCP-drivable. The render
-    /// itself is async; this kicks it off.
-    Bounce { sample: SampleId },
+    /// itself is async; this kicks it off. `duration_secs` overrides the
+    /// auto-computed render length (song loop length, or a fixed one-shot window) —
+    /// pass it to capture a fixed span of a procedural / worklet source that would
+    /// otherwise render only a tiny default. `None` keeps the default.
+    Bounce {
+        sample: SampleId,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        duration_secs: Option<f64>,
+    },
     /// Replace (or, with `additive`, extend) the selection.
     SelectNodes { ids: Vec<NodeId>, additive: bool },
     /// Clear the selection.
@@ -341,6 +348,10 @@ pub enum ArrangeOp {
         clip: usize,
         looping: bool,
     },
+    /// Remove every clip from every track, leaving the (empty) tracks in place —
+    /// a one-shot reset so an agent can rebuild an arrangement without removing
+    /// and re-adding tracks.
+    Clear,
 }
 
 impl EditorCommand {

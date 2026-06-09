@@ -121,6 +121,8 @@ fn query_result_round_trip() {
             kind: awsm_audio_schema::SampleKind::Sound,
             is_root: true,
             is_active: true,
+            bounce: Some("clean".into()),
+            duration_secs: Some(2.5),
         }]),
         QueryResult::BounceStatus("clean".into()),
         QueryResult::Transport(TransportInfo {
@@ -201,10 +203,12 @@ fn request_round_trip() {
         Request::RenderWav {
             sample: Some(SampleId::new()),
             sample_rate: Some(44_100.0),
+            duration_secs: Some(8.0),
         },
         Request::RenderWav {
             sample: None,
             sample_rate: None,
+            duration_secs: None,
         },
         Request::AttachWasm {
             node: NodeId::new(),
@@ -240,9 +244,10 @@ fn request_wire_shape() {
     let v = serde_json::to_value(Request::RenderWav {
         sample: None,
         sample_rate: None,
+        duration_secs: None,
     })
     .unwrap();
-    // `RenderWav` with both fields skipped serializes to an empty object.
+    // `RenderWav` with all fields skipped serializes to an empty object.
     assert_eq!(v, serde_json::json!({ "RenderWav": {} }));
 
     // The inner `EditorQuery` is adjacently tagged by "query"/"args".

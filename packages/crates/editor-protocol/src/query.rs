@@ -130,6 +130,14 @@ pub struct SampleInfo {
     pub kind: SampleKind,
     pub is_root: bool,
     pub is_active: bool,
+    /// Bounce state for a Sound: `"none"` / `"clean"` / `"dirty"`. `None` for an
+    /// Arrangement (not bounceable). Mirrors `AssetInfo.bounce` so `list_samples`
+    /// is a one-stop view.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bounce: Option<String>,
+    /// Bounced duration in seconds, if this Sound has a bounce.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration_secs: Option<f64>,
 }
 
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]

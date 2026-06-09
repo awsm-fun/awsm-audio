@@ -1,0 +1,43 @@
+version: "3"
+
+# Publish the awsm-audio *library* crates that creators depend on to crates.io:
+#
+#   - awsm-audio-schema   the project data model / authored file format (pure serde)
+#   - awsm-audio-player   the WebAudio playback engine (instantiates a schema graph)
+#   - awsm-audio-worklet  the ABI for authoring a custom WASM DSP worklet
+#
+# Frontends (editor), the MCP server, the example worklets, and the internal
+# editor-protocol crate are all `publish = false`, so they're never pushed.
+#
+# Verify builds run on wasm32 — `awsm-audio-player` is web-sys / wasm-only, and
+# schema + worklet build there too, so one target covers the set. Cargo orders a
+# multi-`-p` publish by dependency (schema → player), and worklet stands alone.
+
+tasks:
+  publish:
+    desc: "Publish the public awsm library crates (schema, player, worklet) to crates.io."
+    cmds:
+      - task: _publish
+        vars:
+          PUBLISH_ARGS: ""
+
+  publish-dry-run:
+    desc: "Dry-run the crates.io publish — packages + verifies, uploads nothing."
+    cmds:
+      - task: _publish
+        vars:
+          # --allow-dirty tolerates an uncommitted working tree during the dry run.
+          PUBLISH_ARGS: "--dry-run --allow-dirty"
+
+  _publish:
+    internal: true
+    # Explicit `-p` list (not `--workspace`) so only the intended creator-facing
+    # crates ever go out, even as new internal members are added.
+    cmds:
+      - >
+        cargo publish
+        -p awsm-audio-schema
+        -p awsm-audio-player
+        -p awsm-audio-worklet
+        --target wasm32-unknown-unknown
+        {{.PUBLISH_ARGS}}

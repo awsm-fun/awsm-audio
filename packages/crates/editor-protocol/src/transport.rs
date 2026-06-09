@@ -33,12 +33,16 @@ pub enum Request {
         sample: SampleId,
     },
     /// Render a Sound offline to a `.wav` (raw bytes). `sample = None` renders
-    /// the project root. Optional `sample_rate` overrides the bounce rate.
+    /// the project root. Optional `sample_rate` overrides the bounce rate;
+    /// optional `duration_secs` overrides the render length (capture a fixed span
+    /// of a procedural / worklet source that would otherwise render a tiny default).
     RenderWav {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         sample: Option<SampleId>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         sample_rate: Option<f32>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        duration_secs: Option<f64>,
     },
     /// Attach a compiled WASM DSP module (base64-encoded `.wasm`) to an
     /// AudioWorklet node. Carries bytes (not an `EditorCommand`) for the same
