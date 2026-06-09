@@ -152,7 +152,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "awsm-audio-mcp-server"
+name = "awsm-audio-mcp"
 version = "0.1.0"
 dependencies = [
  "anyhow",

@@ -34,7 +34,7 @@ verification — DONE" below). The morning checklist is kept as a reusable runbo
 | Phase | What | State |
 |---|---|---|
 | 1 | Extract `awsm-audio-editor-protocol` crate | ✅ done, committed |
-| 2 | Native `awsm-audio-mcp-server` crate | ✅ done, committed |
+| 2 | Native `awsm-audio-mcp` crate | ✅ done, committed |
 | 3 | Editor `remote.rs` (WebTransport client + render path) | ✅ done, committed |
 | 4 | Editor connect UX (top-bar button + modal + `?mcp=`) | ✅ done, committed |
 | 5 | Taskfile + config wiring | ✅ done, committed |
@@ -142,7 +142,7 @@ resources and the `author_worklet` prompt.
   `Request` wire-shape test, and the pure WAV-math (`WavStats::from_pcm` /
   `WaveformEnvelope::from_pcm`: unit sine → peak≈1 / rms≈0.707, ramp envelope
   monotonic, bucket bounds).
-- **`cargo test -p awsm-audio-mcp-server`** — the cert test (`GeneratedCert::new`
+- **`cargo test -p awsm-audio-mcp`** — the cert test (`GeneratedCert::new`
   + 32-byte base64url hash).
 - **`cargo build -p awsm-audio-editor --target wasm32-unknown-unknown`** — the
   editor compiles to wasm (remote.rs + connect UI + the `render_pcm` /
@@ -152,7 +152,7 @@ resources and the `author_worklet` prompt.
   `\0asm`), proving the author→compile half of the worklet pipeline.
 - **Headless server boot + `GET /control`** (no editor, no browser):
   ```
-  task mcp:serve &              # or: cargo run -p awsm-audio-mcp-server -- --http-port 9171 --quic-port 9172
+  task mcp:serve &              # or: cargo run -p awsm-audio-mcp -- --http-port 9171 --quic-port 9172
   sleep 2
   curl -s http://127.0.0.1:9171/control
   # → {"cert_hash":"…","quic_url":"https://127.0.0.1:9172"}

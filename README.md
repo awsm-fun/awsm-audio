@@ -51,23 +51,26 @@ and read back WAV stats / waveform envelopes. Great for agent-in-the-loop sound
 design.
 
 ```
-agent (MCP client) ──HTTP /mcp──▶ awsm-audio-mcp-server ──WebTransport/QUIC──▶ editor (browser tab)
-                                  (packages/mcp)            editor dials out   → EditorController
+agent (MCP client) ──HTTP /mcp──▶ awsm-audio-mcp ──WebTransport/QUIC──▶ editor (browser tab)
+                                  (packages/mcp)    editor dials out    → EditorController
 ```
 
-A native server ([`packages/mcp`](packages/mcp), `awsm-audio-mcp-server`) exposes
-MCP tools over streamable-HTTP and relays each one to a running editor tab over a
-WebTransport (QUIC) link that **the editor dials out to** (a browser tab can't be
-a server). The whole tool vocabulary is strongly typed — `tools/list` publishes
-the exact JSON Schema for every node kind, command, and query.
+A native server ([`packages/mcp`](packages/mcp), the `awsm-audio-mcp` binary)
+exposes MCP tools over streamable-HTTP and relays each one to a running editor tab
+over a WebTransport (QUIC) link that **the editor dials out to** (a browser tab
+can't be a server). The whole tool vocabulary is strongly typed — `tools/list`
+publishes the exact JSON Schema for every node kind, command, and query.
+
+The loop has **three pieces, all required**: the **MCP server**, an attached
+**editor tab** (the audio truth — without it, tool calls return *"no editor
+attached"*), and your **agent**. Set them up in that order:
 
 ### Quick start
 
-1. **Start the editor + the MCP server** (two processes; run together):
+1. **Start the editor + the MCP server.** Easiest — both together from the repo:
 
    ```bash
-   task mcp-dev          # editor:dev + mcp:serve
-   # …or in two terminals: `task editor:dev` and `task mcp:serve`
+   task mcp-dev          # editor:dev + mcp:serve  (or run each in its own terminal)
    ```
 
    | Service | Address |
@@ -76,9 +79,17 @@ the exact JSON Schema for every node kind, command, and query.
    | MCP + control HTTP | `http://127.0.0.1:9171` (`/mcp`, `/control`, `/debug`) |
    | WebTransport link | UDP `9172` |
 
+   Or **install the server once** and run it from anywhere (no repo needed for the
+   server itself — you still run `task editor:dev` for the tab):
+
+   ```bash
+   task mcp:install      # builds release, installs `awsm-audio-mcp` to ~/.cargo/bin
+   awsm-audio-mcp        # then run it from any directory (defaults to 9171/9172)
+   ```
+
    > **Chrome only.** The link uses WebTransport `serverCertificateHashes`, which
    > is Chromium-only. The dev cert is regenerated on every server start, so after
-   > restarting `mcp:serve`, reload the tab.
+   > restarting the server, reload the tab.
 
 2. **Attach the editor** to the server: click the **MCP** button in the top bar,
    or load the editor with `?mcp=` to auto-connect:

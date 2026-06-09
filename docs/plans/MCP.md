@@ -442,7 +442,7 @@ seam. This is a near-verbatim port of `../awsm-renderer/packages/mcp/`.
 
 ```toml
 [package]
-name = "awsm-audio-mcp-server"
+name = "awsm-audio-mcp"
 description = "Native MCP server for the awsm-audio editor (WebTransport link + rmcp)."
 version.workspace = true
 edition.workspace = true       # NOTE: see rust-version bump below
@@ -451,7 +451,7 @@ authors.workspace = true
 repository.workspace = true
 
 [[bin]]
-name = "awsm-audio-mcp-server"
+name = "awsm-audio-mcp"
 path = "src/main.rs"
 
 [dependencies]
@@ -842,7 +842,7 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info,awsm_audio_mcp_server=debug".into()),
+                .unwrap_or_else(|_| "info,awsm_audio_mcp=debug".into()),
         )
         .init();
 
@@ -882,9 +882,9 @@ editor needed) — keep it as a live gate. Run the server in the background, cur
 then kill it:
 
 ```
-cargo test  -p awsm-audio-mcp-server                                 # cert test green
+cargo test  -p awsm-audio-mcp                                 # cert test green
 task lint                                                            # AUTHORITATIVE
-cargo run   -p awsm-audio-mcp-server -- --http-port 9171 --quic-port 9172 &   # background
+cargo run   -p awsm-audio-mcp -- --http-port 9171 --quic-port 9172 &   # background
 sleep 2
 curl -s http://127.0.0.1:9171/control     # → {"quic_url":"https://127.0.0.1:9172","cert_hash":"..."}
 kill %1
@@ -1124,14 +1124,14 @@ tasks:
     desc: "MCP server: WebTransport (QUIC) link the editor dials into + rmcp /mcp + /control + /debug."
     cmds:
       - >
-        cargo run -p awsm-audio-mcp-server --
+        cargo run -p awsm-audio-mcp --
         --http-port {{.PORT_MCP_HTTP_DEV}}
         --quic-port {{.PORT_MCP_QUIC_DEV}}
 
   build:
     desc: "Build the MCP server binary (debug)."
     cmds:
-      - cargo build -p awsm-audio-mcp-server
+      - cargo build -p awsm-audio-mcp
 ```
 
 ### 5.3 `taskfiles/frontend/editor.yml`
@@ -1322,7 +1322,7 @@ Also add the worklet docs to the `ServerHandler::list_resources`/`read_resource`
 cargo test  -p awsm-audio-editor-protocol     # AttachWasm round-trip green
 task lint                                      # AUTHORITATIVE
 cargo build -p awsm-audio-editor --target wasm32-unknown-unknown   # wasm compile
-cargo build -p awsm-audio-mcp-server           # server compiles the new tool
+cargo build -p awsm-audio-mcp           # server compiles the new tool
 ```
 
 The live attach (agent authors → `cargo build` → `attach_wasm` → param discovery
@@ -1450,7 +1450,7 @@ re-verify.
 **Unattended / overnight (must be green + committed):**
 - [ ] `awsm-audio-editor-protocol` compiles native + wasm; serde round-trip
       tests pass; editor re-exports the moved types and still builds to wasm.
-- [ ] `awsm-audio-mcp-server` builds; cert test passes; it boots and `GET
+- [ ] `awsm-audio-mcp` builds; cert test passes; it boots and `GET
       /control` returns URL + hash (headless curl).
 - [ ] Editor `remote.rs` + connect UX + the new `render_pcm` controller method
       compile to wasm; pure WAV-math helpers have native unit tests.
