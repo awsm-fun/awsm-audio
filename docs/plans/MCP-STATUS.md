@@ -2,8 +2,9 @@
 
 Status of the MCP work described in `docs/plans/MCP.md`. Branch: **`mcp-server`**.
 
-_All seven phases' unattended-coverable work is landed, tested, and committed.
-The live browser/MCP-client round-trips are deferred to the checklist below._
+_All seven phases are landed, tested, and committed — **and the live
+browser/MCP-client round-trip was verified end-to-end on 2026-06-09** (see "Live
+verification — DONE" below). The morning checklist is kept as a reusable runbook._
 
 ## Where things stand
 
@@ -15,9 +16,34 @@ The live browser/MCP-client round-trips are deferred to the checklist below._
 | 4 | Editor connect UX (top-bar button + modal + `?mcp=`) | ✅ done, committed |
 | 5 | Taskfile + config wiring | ✅ done, committed |
 | 6 | Worklet authoring over MCP (`attach_wasm`) | ✅ done, committed |
-| 7 | Live verification | DEFERRED (this checklist) |
+| 7 | Live verification | ✅ **verified 2026-06-09** |
 
 Commits (on `mcp-server`): Phase 1 → 6 are one commit each, plus this doc.
+
+## Live verification — DONE (2026-06-09, Chrome)
+
+The full browser/MCP-client round-trip was run by hand and passed:
+
+- **Attach:** editor auto-connected via `?mcp=`; server logged `editor attached`;
+  attach probe `Ok`. Top-bar button showed "MCP ✓".
+- **`/debug` seam:** `Play`/`Stop` → `"Ok"`; `Query samples` → the root "main"
+  Sound; `RenderWav` → a valid 16-bit stereo 48 kHz WAV on disk.
+- **MCP client over `/mcp`** (raw streamable-HTTP handshake): `initialize` →
+  session id + server instructions; `tools/list` → all 21 tools; `add_node`
+  (oscillator) → `ok`, and the follow-up `get_snapshot` reflected the new node.
+- **WAV readbacks:** with a 440 Hz oscillator auditioning, `wav_stats` →
+  `peak 1.0, rms 0.707` (textbook unit sine), `waveform` → flat ±1.0 envelope.
+- **Worklet authoring:** `add_node` an `audio_worklet`; built
+  `awsm-audio-worklet-gain` to wasm; `attach_wasm { node, wasm_path }` →
+  `get_snapshot` showed the discovered `gain` param (range 0.0–2.0); a
+  deliberately-broken module returned the real `WebAssembly.compile` error.
+- **Connect UX:** the top-bar button + modal disconnect/reconnect verified (server
+  log shows `editor attached` → `client disconnect` → `editor attached`).
+- **Gotcha found:** hand-written `/debug` JSON for a struct-variant query needs an
+  explicit `"args"` (e.g. `{"Query":{"query":"wav_stats","args":{}}}`); the MCP
+  tools build these in Rust so they're unaffected. The saved WAV lands in the OS
+  temp dir (`std::env::temp_dir()`), which on macOS is `/var/folders/.../T/`, not
+  `/tmp`.
 
 ## Natively covered (unattended — green at every commit)
 
@@ -51,19 +77,12 @@ Commits (on `mcp-server`): Phase 1 → 6 are one commit each, plus this doc.
   Verified: logs the cert hash + "WebTransport (QUIC) listening on udp/9172",
   `/control` returns the URL + hash.
 
-## What still needs the live editor (browser-only — do NOT run unattended)
+## Browser-only surface (now verified — see "Live verification — DONE" above)
 
-The WebTransport round-trip needs a hand-attached **Chrome** tab
-(`serverCertificateHashes` is Chrome-only) and an MCP client. Everything below the
-`/control` boot is deferred to the morning checklist:
-
-- The editor actually attaching over WebTransport (`?mcp=` auto-connect + the
-  top-bar button/modal rendering and connecting).
-- `/debug` round-trips (a query, a mutation, `RenderWav` writing a file).
-- `wav_stats` / `waveform` returning correct numbers for a known Sound.
-- An MCP client at `/mcp` discovering, mutating, and reading back WAV.
-- The full worklet round-trip: author → `cargo build` → `attach_wasm` → params
-  discovered in `get_snapshot` → audible; a broken module returns the error.
+Everything below the `/control` boot needs a hand-attached **Chrome** tab
+(`serverCertificateHashes` is Chrome-only) + an MCP client, so it can't run
+unattended — but it was all exercised live on 2026-06-09 and passed. The morning
+checklist below remains the reusable runbook for re-verifying after changes.
 
 ## Known follow-ups (not blocking)
 
