@@ -65,11 +65,45 @@ Beyond the checklist, every tool was driven and behaved correctly:
   `remove_node` deleted a node; `get_transport` / `run_query` (escape hatch, all
   query forms incl. `args`) all correct.
 
-Net: all 21 tools verified live (`get_snapshot`, `list_samples`, `list_assets`,
-`get_arrangement`, `get_transport`, `get_bounce_status`, `render_wav`,
-`wav_stats`, `waveform`, `play`, `stop`, `add_node`, `remove_node`, `connect`,
-`set_field`, `bounce`, `set_root`, `attach_wasm`, `dispatch_command`,
-`dispatch_batch`, `run_query`).
+### Discoverability upgrade (so an agent never guesses the schema)
+
+Driving the editor by hand surfaced real guesswork (the `NodeKind` kind/props
+tagging, biquad's `Q` field, valid `set_field` keys, the nested sequencer/
+arrangement op shapes). Closed at the source and verified live:
+
+- **`list_node_kinds`** → 25 creatable kinds, each with its tag, palette section,
+  editable field keys, and a copy-paste `example` default (e.g. it reveals
+  biquad's field is `Q`, not `q`).
+- **`get_node_fields { node }`** → a live node's `set_field` keys + control type +
+  current value (incl. a worklet's discovered params).
+- **`add_node`** now takes a bare kind-name string (`"oscillator"`) — the editor
+  fills WebAudio defaults — or a full value; unknown names return a helpful error.
+- **`awsm://docs/vocabulary`** resource documents the `dispatch_command` /
+  `run_query` JSON shapes + the multi-sample instrument+sequencer recipe.
+- **`set_active_sample`** unlocks editing a sub-sample's graph (the gap that had
+  blocked building an instrument for a sequence).
+
+### Real project concepts driven end-to-end
+
+- **Custom WASM DSP scales audio** (gain-worklet): peak 1.0 → 0.5 → 0.25 exactly.
+- **Lowpass filter sweep** (sawtooth → biquad): rendered peak climbs 0.72 → 1.23
+  as the cutoff opens and more harmonics pass — correct lowpass behavior, driven
+  via discovered field keys.
+- **Sequenced melody, fully over MCP:** built an instrument sub-sample (oscillator
+  voice) via `set_active_sample`, switched back, authored a 6-note arpeggio with
+  `edit_song`, added a Sample-ref + `bind`'d the sequencer to its trigger →
+  `render_wav` produced the sequence (peak 1.35, 1.11 s, the waveform envelope
+  shows 6 distinct note attacks).
+- **Bounce lifecycle, arrangement, dispatch_batch, remove_node, run_query,
+  set_root** — all verified earlier in the session.
+
+Net: all **24** tools verified live (`get_snapshot`, `list_node_kinds`,
+`get_node_fields`, `list_samples`, `list_assets`, `get_arrangement`,
+`get_transport`, `get_bounce_status`, `render_wav`, `wav_stats`, `waveform`,
+`play`, `stop`, `add_node`, `remove_node`, `connect`, `set_field`, `bounce`,
+`set_root`, `set_active_sample`, `attach_wasm`, `dispatch_command`,
+`dispatch_batch`, `run_query`) plus the `awsm://docs/{vocabulary,worklet-abi}`
+resources and the `author_worklet` prompt.
 
 ## Natively covered (unattended — green at every commit)
 
