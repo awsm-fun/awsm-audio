@@ -43,10 +43,12 @@ tasks:
       - task: editor:clean
 
   lint:
-    desc: "Run rustfmt + clippy with -D warnings (all features, tests)."
+    desc: "Run rustfmt + clippy with -D warnings (mirrors CI: wasm32 + host)."
     cmds:
       - cargo fmt --all -- --check
-      - cargo clippy --all --all-features --tests -- -D warnings
+      # awsm-audio-mcp is a native-only server (tokio net / quinn); skip it on wasm32.
+      - cargo clippy --workspace --exclude awsm-audio-mcp --target wasm32-unknown-unknown -- -D warnings
+      - cargo clippy --workspace -- -D warnings
 
   worklets:
     desc: "Build the example WASM worklets and embed them into the schema assets."
