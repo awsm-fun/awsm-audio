@@ -6,6 +6,29 @@ _All seven phases are landed, tested, and committed — **and the live
 browser/MCP-client round-trip was verified end-to-end on 2026-06-09** (see "Live
 verification — DONE" below). The morning checklist is kept as a reusable runbook._
 
+## Follow-on work (2026-06-09, all live-verified)
+
+- **Strongly-typed MCP tool params (schemars).** The schema + protocol crates
+  derive `JsonSchema` behind an optional `schemars` feature (wasm never pulls it;
+  id newtypes get a hand-rolled uuid-string schema). The MCP server enables it and
+  types its tools: `add_node` takes a `NodeKind`, `dispatch_command`/`run_query`/
+  `dispatch_batch` take `EditorCommand`/`EditorQuery`, and node/sample params are
+  `NodeId`/`SampleId` — so `tools/list` now publishes the **full schema for all 25
+  node kinds + every command/query inline** (verified). A `Flexible<T>` wrapper
+  keeps the exact `T` schema while still tolerating a stringified-JSON arg
+  (verified: `dispatch_command` accepts both). `list_node_kinds` also returns each
+  kind's `description` + `mdn` URL (the editor's node-help) so a fresh agent learns
+  what each node does.
+- **Arrangement offline export + loop/export markers; "record" removed.** Replaced
+  the real-time ScriptProcessor "record" with the same offline render Sounds use,
+  extended to arrangements (`bounce::render_clips`). `render_wav`/`wav_stats`/
+  `waveform` route an arrangement sample through its clip timeline (verified: a
+  clip at t=2 on a 10 s timeline → silence 0–2 s then audio). Optional, toggleable
+  `loop_start`/`loop_end` markers on the `Arrangement` drive **both** the playback
+  loop region and the export window (verified: markers `[2,5]` → a 3 s export).
+  UI: Arrange-view Export button + "⟦ in / out ⟧" marker buttons + a shaded ruler
+  region (`set_arrangement_markers` over MCP, or `edit_arrange set_markers`).
+
 ## Where things stand
 
 | Phase | What | State |
