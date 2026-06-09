@@ -19,7 +19,7 @@
 //! (`RenderWav`/`WavStats`/`Waveform`) and `AttachWasm` await, so those take a
 //! dedicated async branch in [`serve_one`].
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 use base64::Engine;
 use futures_signals::signal::Mutable;
@@ -54,17 +54,73 @@ pub enum RemoteStatus {
     Connected,
 }
 
+/// How long the "agent working" pulse lingers after the last request completes,
+/// so a burst of quick mutations reads as one continuous pulse rather than a
+/// flicker (and the user sees clearly when the agent has gone idle).
+const WORKING_COOLDOWN_MS: u32 = 450;
+
 thread_local! {
     static STATUS: Mutable<RemoteStatus> = Mutable::new(RemoteStatus::Disconnected);
     static ORIGIN: Mutable<String> = Mutable::new(default_origin().to_string());
     /// The live session, kept so the UI can `disconnect()` it.
     static SESSION: RefCell<Option<Session>> = const { RefCell::new(None) };
+    /// True while the MCP agent is actively serving requests (drives the UI pulse).
+    static WORKING: Mutable<bool> = Mutable::new(false);
+    /// Count of in-flight requests (a long render keeps the pulse lit).
+    static IN_FLIGHT: Cell<u32> = const { Cell::new(0) };
+    /// Bumped whenever activity starts/stops; lets a queued cooldown cancel itself.
+    static IDLE_GEN: Cell<u64> = const { Cell::new(0) };
 }
 
 /// Reactive connection status (for the UI button). Consumed by the top-bar MCP
 /// button + connect modal.
 pub fn status() -> Mutable<RemoteStatus> {
     STATUS.with(|s| s.clone())
+}
+
+/// Reactive "agent working" flag — true while the MCP agent is serving requests
+/// (plus a short cooldown). The top-bar MCP indicator pulses on this so the user
+/// knows when it's safe to edit / that a render is done.
+pub fn working() -> Mutable<bool> {
+    WORKING.with(|w| w.clone())
+}
+
+/// Mark the start of serving one MCP request: light the pulse, cancel any pending
+/// idle cooldown.
+fn activity_begin() {
+    IN_FLIGHT.with(|c| c.set(c.get() + 1));
+    IDLE_GEN.with(|g| g.set(g.get().wrapping_add(1)));
+    WORKING.with(|w| w.set_neq(true));
+}
+
+/// Mark one request done. When the last one finishes, keep the pulse lit for a
+/// short cooldown, then clear it if still idle (so bursts don't flicker).
+async fn activity_end() {
+    let remaining = IN_FLIGHT.with(|c| {
+        let n = c.get().saturating_sub(1);
+        c.set(n);
+        n
+    });
+    if remaining != 0 {
+        return;
+    }
+    let gen = IDLE_GEN.with(|g| {
+        let n = g.get().wrapping_add(1);
+        g.set(n);
+        n
+    });
+    gloo_timers::future::TimeoutFuture::new(WORKING_COOLDOWN_MS).await;
+    // Still idle and no newer activity since we queued? Then we're truly done.
+    if IDLE_GEN.with(|g| g.get()) == gen && IN_FLIGHT.with(|c| c.get()) == 0 {
+        WORKING.with(|w| w.set_neq(false));
+    }
+}
+
+/// Force the pulse off (on disconnect) so a stale "working" never lingers.
+fn activity_reset() {
+    IN_FLIGHT.with(|c| c.set(0));
+    IDLE_GEN.with(|g| g.set(g.get().wrapping_add(1)));
+    WORKING.with(|w| w.set_neq(false));
 }
 
 /// The control origin the modal pre-fills (defaults to [`default_origin`];
@@ -98,6 +154,7 @@ pub fn connect(control_origin: String) {
     spawn_local(async move {
         let result = run(control_origin).await;
         SESSION.with(|s| *s.borrow_mut() = None);
+        activity_reset(); // never leave a stale "working" pulse after the link drops
         let was_connected = status.get() == RemoteStatus::Connected;
         status.set(RemoteStatus::Disconnected);
         match (was_connected, result) {
@@ -211,6 +268,7 @@ async fn run(control_origin: String) -> Result<(), String> {
 /// requests go through the sync [`dispatch`]; the offline-render readbacks and
 /// `AttachWasm` take the async branch.
 async fn serve_one(mut send: SendStream, mut recv: RecvStream) {
+    activity_begin();
     let resp = match read_request(&mut recv).await {
         Ok(Request::RenderWav {
             sample,
@@ -228,6 +286,7 @@ async fn serve_one(mut send: SendStream, mut recv: RecvStream) {
     if let Err(e) = reply(&mut send, &resp).await {
         tracing::warn!("mcp: reply failed: {e}");
     }
+    activity_end().await;
 }
 
 async fn read_request(recv: &mut RecvStream) -> Result<Request, String> {

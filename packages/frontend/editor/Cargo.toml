@@ -35,6 +35,7 @@ uuid = { version = "1.11.0", features = ["v4", "serde", "js"] }
 # WebTransport, fetching the cert-hash discovery doc via gloo-net.
 web-transport = "0.10.5"
 gloo-net = { version = "0.6", features = ["http"] }
+gloo-timers = { version = "0.3", features = ["futures"] }
 url = "2"
 
 # Additive on top of the workspace web-sys baseline: pointer/wheel/keyboard

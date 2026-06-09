@@ -8,6 +8,7 @@
 //! [`default_origin`](crate::remote::default_origin)).
 
 use dominator::{clone, events, html, with_node, Dom};
+use futures_signals::map_ref;
 use futures_signals::signal::{Mutable, SignalExt};
 
 use crate::remote::{self, RemoteStatus};
@@ -23,33 +24,79 @@ fn open_state() -> Mutable<bool> {
     OPEN.with(|o| o.clone())
 }
 
-/// The top-bar MCP button, reactive to the link status.
+/// The top-bar MCP button (reactive to the link status) plus, when connected, an
+/// activity chip that pulses while the agent is working and reads "idle" when it's
+/// safe to edit / the result is ready to export.
 pub fn button() -> Dom {
     html!("div", {
-        .child_signal(remote::status().signal().map(|status| Some(match status {
-            RemoteStatus::Disconnected => Btn::new()
-                .label("MCP")
-                .variant(BtnVariant::Ghost)
-                .size(BtnSize::Sm)
-                .title("Connect to an MCP server")
-                .on_click(|| open_state().set(true))
-                .render(),
-            RemoteStatus::Connecting => Btn::new()
-                .label("MCP…")
-                .variant(BtnVariant::Ghost)
-                .size(BtnSize::Sm)
-                .title("Connecting…")
-                .disabled(true)
-                .on_click(|| {})
-                .render(),
-            RemoteStatus::Connected => Btn::new()
-                .label("MCP ✓")
-                .variant(BtnVariant::Primary)
-                .size(BtnSize::Sm)
-                .title("Connected — click to disconnect")
-                .on_click(remote::disconnect)
-                .render(),
-        })))
+        .style("display", "flex")
+        .style("align-items", "center")
+        .style("gap", "6px")
+        .child_signal(remote::status().signal().map(|status| Some(status_button(status))))
+        // The activity chip only exists while connected; it reflects `working`.
+        .child_signal(map_ref! {
+            let status = remote::status().signal(),
+            let working = remote::working().signal() =>
+            (*status == RemoteStatus::Connected).then(|| activity_chip(*working))
+        })
+    })
+}
+
+fn status_button(status: RemoteStatus) -> Dom {
+    match status {
+        RemoteStatus::Disconnected => Btn::new()
+            .label("MCP")
+            .variant(BtnVariant::Ghost)
+            .size(BtnSize::Sm)
+            .title("Connect to an MCP server")
+            .on_click(|| open_state().set(true))
+            .render(),
+        RemoteStatus::Connecting => Btn::new()
+            .label("MCP…")
+            .variant(BtnVariant::Ghost)
+            .size(BtnSize::Sm)
+            .title("Connecting…")
+            .disabled(true)
+            .on_click(|| {})
+            .render(),
+        RemoteStatus::Connected => Btn::new()
+            .label("MCP ✓")
+            .variant(BtnVariant::Primary)
+            .size(BtnSize::Sm)
+            .title("Connected — click to disconnect")
+            .on_click(remote::disconnect)
+            .render(),
+    }
+}
+
+/// The "🤖 agent working… / idle" chip. Pulses (via the `mcp-pulse` keyframes in
+/// [`crate::theme`]) while the agent is serving requests; calm + muted when idle.
+fn activity_chip(working: bool) -> Dom {
+    html!("div", {
+        .style("display", "flex")
+        .style("align-items", "center")
+        .style("gap", "4px")
+        .style("font-size", "11px")
+        .style("font-weight", "550")
+        .style("padding", "2px 8px")
+        .style("border-radius", "999px")
+        .style("white-space", "nowrap")
+        .style("user-select", "none")
+        .apply(|d| if working {
+            d.style("color", "var(--accent-bright)")
+                .style("background", "oklch(0.7 0.13 230 / 0.16)")
+                .style("border", "1px solid var(--accent-line)")
+                // Pulse the whole chip's opacity while work is in flight.
+                .style("animation", "mcp-pulse 1.1s ease-in-out infinite")
+                .attr("title", "Agent is working — changes are landing live; wait for idle before editing or exporting.")
+        } else {
+            d.style("color", "var(--text-3)")
+                .style("background", "transparent")
+                .style("border", "1px solid var(--line)")
+                .attr("title", "Agent idle — safe to edit / export.")
+        })
+        .child(html!("span", { .text("🤖") }))
+        .child(html!("span", { .text(if working { "working…" } else { "idle" }) }))
     })
 }
 
