@@ -2,12 +2,12 @@
 //! (the canvas commits the current sample first), `+` adds a sample, `★` marks
 //! the play root, `×` deletes, double-click renames.
 
-use dominator::{clone, events, html, Dom};
+use dominator::{events, html, Dom};
 use futures_signals::signal::SignalExt;
 
 use awsm_audio_schema::SampleKind;
 
-use crate::controller::{controller, SampleTab};
+use crate::controller::controller;
 use crate::theme::ACCENT_FG;
 use crate::widgets::{Icon, IconBtn};
 
@@ -85,7 +85,7 @@ fn strip() -> Dom {
             .style("background", "var(--line)")
             .style("margin", "0 2px")
         }))
-        .children(controller().sample_tabs().into_iter().map(tab))
+        .child(picker_button())
         .child(IconBtn::new("plus")
             .title("New sample")
             .on_click(|| controller().add_sample())
@@ -93,72 +93,51 @@ fn strip() -> Dom {
     })
 }
 
-fn tab(t: SampleTab) -> Dom {
-    let id = t.id;
-    let can_delete = controller().sample_tabs().len() > 1;
-    html!("div", {
+/// The current-selection button: shows the active sample's name plus a count of
+/// how many samples are in this view, and opens the filterable picker modal. This
+/// replaces the inline horizontal tab list, which didn't scale.
+fn picker_button() -> Dom {
+    let tabs = controller().sample_tabs();
+    let count = tabs.len();
+    let active_name = tabs
+        .iter()
+        .find(|t| t.is_active)
+        .map(|t| t.name.clone())
+        .unwrap_or_else(|| "—".to_string());
+    html!("button", {
         .class("t")
-        .style("display", "flex")
+        .style("display", "inline-flex")
         .style("align-items", "center")
-        .style("gap", "5px")
+        .style("gap", "7px")
         .style("height", "28px")
-        .style("padding", "0 7px 0 10px")
+        .style("padding", "0 9px 0 11px")
+        .style("border", "1px solid var(--accent-line)")
         .style("border-radius", "var(--r2)")
+        .style("background", "var(--accent-ghost)")
+        .style("color", "var(--text-0)")
         .style("font-size", "12px")
         .style("white-space", "nowrap")
         .style("cursor", "pointer")
-        .style("border", if t.is_active {
-            "1px solid var(--accent-line)"
-        } else {
-            "1px solid var(--line)"
-        })
-        .style("color", if t.is_active { "var(--text-0)" } else { "var(--text-1)" })
-        .style("background", if t.is_active { "var(--accent-ghost)" } else { "var(--bg-3)" })
-        // Click the body switches to this sample.
-        .event(clone!(id => move |_: events::Click| controller().switch_sample(id)))
-        // Right-click: context menu (Clone).
-        .event_with_options(&dominator::EventOptions::preventable(), clone!(id => move |e: events::ContextMenu| {
-            e.prevent_default();
-            controller().open_sample_tab_menu(id, e.x(), e.y());
-        }))
-        // Root toggle (★ filled = root).
+        .attr("title", "Switch sample")
         .child(html!("span", {
-            .attr("title", "Set as play root")
-            .style("cursor", "pointer")
-            .style("color", if t.is_root { "var(--warn)" } else { "var(--text-3)" })
-            .text(if t.is_root { "★" } else { "☆" })
-            .event_with_options(&dominator::EventOptions::bubbles(), clone!(id => move |e: events::Click| {
-                e.stop_propagation();
-                controller().set_root(id);
-            }))
+            .style("max-width", "180px")
+            .style("overflow", "hidden")
+            .style("text-overflow", "ellipsis")
+            .text(&active_name)
         }))
-        // Name (double-click to rename).
         .child(html!("span", {
-            .text(&t.name)
-            .event(clone!(id => move |e: events::DoubleClick| {
-                e.stop_propagation();
-                if let Some(win) = web_sys::window() {
-                    if let Ok(Some(name)) = win.prompt_with_message("Rename sample") {
-                        if !name.trim().is_empty() {
-                            controller().rename_sample(id, name);
-                        }
-                    }
-                }
-            }))
+            .style("font-size", "11px")
+            .style("padding", "1px 6px")
+            .style("border-radius", "999px")
+            .style("background", "var(--bg-3)")
+            .style("color", "var(--text-2)")
+            .text(&count.to_string())
         }))
-        // Delete (only if more than one sample).
-        .apply(move |b| if can_delete {
-            b.child(html!("span", {
-                .attr("title", "Delete sample")
-                .style("cursor", "pointer")
-                .style("opacity", "0.55")
-                .style("padding", "0 2px")
-                .text("×")
-                .event(clone!(id => move |e: events::Click| {
-                    e.stop_propagation();
-                    controller().delete_sample(id);
-                }))
-            }))
-        } else { b })
+        .child(html!("span", {
+            .style("font-size", "10px")
+            .style("opacity", "0.7")
+            .text("▾")
+        }))
+        .event(|_: events::Click| controller().open_sample_picker())
     })
 }

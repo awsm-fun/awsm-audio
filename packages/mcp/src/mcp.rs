@@ -25,9 +25,10 @@ use rmcp::{
 };
 use serde_json::Value;
 
-use awsm_audio_editor_protocol::schema::{NodeId, NodeKind, SampleId};
+use awsm_audio_editor_protocol::schema::{NodeId, NodeKind, SampleId, SampleKind};
 use awsm_audio_editor_protocol::{
-    ArrangeOp, EditorCommand, EditorQuery, FieldValue, Request, Response,
+    ArrangeOp, AssetInfo, EditorCommand, EditorQuery, FieldValue, PlacedClip, QueryResult, Request,
+    Response,
 };
 
 use crate::link::EditorLink;
@@ -71,6 +72,10 @@ pub struct RenderWavParams {
     /// Override the bounce sample rate (Hz).
     #[serde(default)]
     pub sample_rate: Option<f32>,
+    /// Fixed render length in seconds — capture a span of a procedural / worklet
+    /// source that otherwise renders only a tiny default. Omit for the default.
+    #[serde(default)]
+    pub duration_secs: Option<f64>,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -164,6 +169,124 @@ pub struct AttachWasmParams {
     pub label: Option<String>,
 }
 
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct BounceParams {
+    /// Target sample id (from `list_samples`).
+    pub sample: SampleId,
+    /// Optional fixed render length in seconds. Overrides the auto-computed
+    /// duration — use it to capture a fixed span of a procedural / worklet source
+    /// that otherwise renders only a tiny default. Omit to keep the default.
+    #[serde(default)]
+    pub duration_secs: Option<f64>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct RenameSampleParams {
+    /// Sample to rename (Sound or Arrangement), from `list_samples`.
+    pub sample: SampleId,
+    /// The new name.
+    pub name: String,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct AddClipParams {
+    /// Track index (0-based) in the active arrangement.
+    pub track: usize,
+    /// Clip start on the timeline, in seconds (use `beats_to_secs` for beat math).
+    pub start: f64,
+    /// Bounced Sound to place (from `list_assets`/`list_samples`). Must be bounced.
+    pub source: SampleId,
+    /// Timeline length in seconds; omit to use the full bounce duration.
+    #[serde(default)]
+    pub length: Option<f64>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct ClipRef {
+    /// Track index (0-based).
+    pub track: usize,
+    /// Clip index (0-based) within the track.
+    pub clip: usize,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct ClipGainParams {
+    pub track: usize,
+    pub clip: usize,
+    /// Linear gain (1.0 = unity).
+    pub gain: f32,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct TrackArg {
+    /// Track index (0-based).
+    pub track: usize,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct TrackNameParams {
+    pub track: usize,
+    pub name: String,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct TrackGainParams {
+    pub track: usize,
+    /// Linear gain (1.0 = unity).
+    pub gain: f32,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct BpmParams {
+    /// Tempo in BPM (clamped 20–400 by the editor).
+    pub bpm: f64,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct LengthParams {
+    /// Timeline length in seconds.
+    pub secs: f64,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct BeatsParams {
+    /// Tempo in BPM.
+    pub bpm: f64,
+    /// Number of beats to convert (added to `bars`).
+    #[serde(default)]
+    pub beats: Option<f64>,
+    /// Number of bars to convert (added to `beats`).
+    #[serde(default)]
+    pub bars: Option<f64>,
+    /// Beats per bar (time-signature numerator). Defaults to 4.
+    #[serde(default)]
+    pub beats_per_bar: Option<f64>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct DuplicateClipsParams {
+    /// Track to duplicate within. Omit to duplicate every track's clips.
+    #[serde(default)]
+    pub track: Option<usize>,
+    /// How many copies to append after the originals (each offset one interval more).
+    pub count: usize,
+    /// Repeat interval in seconds (takes priority if set).
+    #[serde(default)]
+    pub interval_secs: Option<f64>,
+    /// Or the interval in beats (converted with `bpm`).
+    #[serde(default)]
+    pub interval_beats: Option<f64>,
+    /// Or the interval in bars (converted with `bpm` × `beats_per_bar`).
+    #[serde(default)]
+    pub interval_bars: Option<f64>,
+    /// BPM for beat/bar conversion. Defaults to the active arrangement's BPM.
+    #[serde(default)]
+    pub bpm: Option<f64>,
+    /// Beats per bar for `interval_bars`. Defaults to 4.
+    #[serde(default)]
+    pub beats_per_bar: Option<f64>,
+}
+
 // ──────────────────────────────── tools ─────────────────────────────────────
 
 #[tool_router]
@@ -255,6 +378,7 @@ impl EditorMcp {
         let req = Request::RenderWav {
             sample: p.sample,
             sample_rate: p.sample_rate,
+            duration_secs: p.duration_secs,
         };
         self.wav(req).await
     }
@@ -362,14 +486,20 @@ impl EditorMcp {
 
     #[tool(
         description = "Render a Sound (`sample`) offline and store it as that \
-        sample's bounce (so it can be dropped into an arrangement)."
+        sample's bounce (so it can be dropped into an arrangement). Pass \
+        `duration_secs` to capture a fixed span of a procedural / worklet source \
+        that otherwise renders only a tiny default. The render is async — re-query \
+        list_samples / get_bounce_status to confirm it landed."
     )]
     async fn bounce(
         &self,
-        Parameters(p): Parameters<SampleReq>,
+        Parameters(p): Parameters<BounceParams>,
     ) -> Result<CallToolResult, McpError> {
-        self.dispatch(EditorCommand::Bounce { sample: p.sample })
-            .await
+        self.dispatch(EditorCommand::Bounce {
+            sample: p.sample,
+            duration_secs: p.duration_secs,
+        })
+        .await
     }
 
     #[tool(
@@ -420,6 +550,350 @@ impl EditorMcp {
             },
         })
         .await
+    }
+
+    // ── arrangement editing (dedicated wrappers over EditArrange) ────────────
+    // These edit the *active* sample, which must be an Arrangement — switch to
+    // one with set_active_sample (or create_arrangement) first.
+
+    #[tool(
+        description = "Create a new (empty) Arrangement sample and make it active. \
+        Build it with add_arrangement_track + add_clip; find its id via list_samples."
+    )]
+    async fn create_arrangement(&self) -> Result<CallToolResult, McpError> {
+        self.dispatch(EditorCommand::AddSample {
+            kind: SampleKind::Arrangement,
+        })
+        .await
+    }
+
+    #[tool(description = "Append an empty track to the active arrangement.")]
+    async fn add_arrangement_track(&self) -> Result<CallToolResult, McpError> {
+        self.arrange(ArrangeOp::AddTrack).await
+    }
+
+    #[tool(description = "Remove a track (by 0-based index) from the active arrangement.")]
+    async fn remove_arrangement_track(
+        &self,
+        Parameters(p): Parameters<TrackArg>,
+    ) -> Result<CallToolResult, McpError> {
+        self.arrange(ArrangeOp::RemoveTrack { track: p.track })
+            .await
+    }
+
+    #[tool(description = "Rename a track in the active arrangement.")]
+    async fn set_track_name(
+        &self,
+        Parameters(p): Parameters<TrackNameParams>,
+    ) -> Result<CallToolResult, McpError> {
+        self.arrange(ArrangeOp::SetTrackName {
+            track: p.track,
+            name: p.name,
+        })
+        .await
+    }
+
+    #[tool(description = "Set a track's linear gain (1.0 = unity) in the active arrangement.")]
+    async fn set_track_gain(
+        &self,
+        Parameters(p): Parameters<TrackGainParams>,
+    ) -> Result<CallToolResult, McpError> {
+        self.arrange(ArrangeOp::SetTrackGain {
+            track: p.track,
+            gain: p.gain,
+        })
+        .await
+    }
+
+    #[tool(
+        description = "Place a bounced Sound as a clip on a track at `start` seconds. \
+        `source` must be bounced. `length` defaults to the full bounce duration. Use \
+        beats_to_secs to turn beats/bars into the `start` seconds."
+    )]
+    async fn add_clip(
+        &self,
+        Parameters(p): Parameters<AddClipParams>,
+    ) -> Result<CallToolResult, McpError> {
+        self.arrange(ArrangeOp::AddClip {
+            track: p.track,
+            start: p.start,
+            source: p.source,
+            length: p.length,
+        })
+        .await
+    }
+
+    #[tool(
+        description = "Remove a clip (0-based `clip` index) from a track in the \
+        active arrangement."
+    )]
+    async fn remove_clip(
+        &self,
+        Parameters(p): Parameters<ClipRef>,
+    ) -> Result<CallToolResult, McpError> {
+        self.arrange(ArrangeOp::RemoveClip {
+            track: p.track,
+            clip: p.clip,
+        })
+        .await
+    }
+
+    #[tool(description = "Set a clip's linear gain (1.0 = unity) in the active arrangement.")]
+    async fn set_clip_gain(
+        &self,
+        Parameters(p): Parameters<ClipGainParams>,
+    ) -> Result<CallToolResult, McpError> {
+        self.arrange(ArrangeOp::SetClipGain {
+            track: p.track,
+            clip: p.clip,
+            gain: p.gain,
+        })
+        .await
+    }
+
+    #[tool(description = "Set the active arrangement's tempo (BPM).")]
+    async fn set_arrangement_bpm(
+        &self,
+        Parameters(p): Parameters<BpmParams>,
+    ) -> Result<CallToolResult, McpError> {
+        self.arrange(ArrangeOp::SetBpm(p.bpm)).await
+    }
+
+    #[tool(description = "Set the active arrangement's timeline length (seconds).")]
+    async fn set_arrangement_length(
+        &self,
+        Parameters(p): Parameters<LengthParams>,
+    ) -> Result<CallToolResult, McpError> {
+        self.arrange(ArrangeOp::SetLengthSecs(p.secs)).await
+    }
+
+    #[tool(
+        description = "Remove every clip from every track of the active arrangement \
+        (tracks stay). A one-shot reset before rebuilding."
+    )]
+    async fn clear_arrangement(&self) -> Result<CallToolResult, McpError> {
+        self.arrange(ArrangeOp::Clear).await
+    }
+
+    #[tool(
+        description = "Duplicate clips along the timeline at a fixed interval — the \
+        loop/section-tiling helper. Copies each clip on `track` (or every track if \
+        omitted) `count` times, each offset one more interval. Give the interval as \
+        `interval_secs`, `interval_beats`, or `interval_bars` (beats/bars use `bpm`, \
+        defaulting to the arrangement's BPM)."
+    )]
+    async fn duplicate_clips(
+        &self,
+        Parameters(p): Parameters<DuplicateClipsParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let arr = match self.query_result(EditorQuery::Arrangement).await? {
+            QueryResult::Arrangement(Some(a)) => a,
+            QueryResult::Arrangement(None) => {
+                return Err(McpError::invalid_params(
+                    "active sample is not an arrangement — set_active_sample to one first",
+                    None,
+                ));
+            }
+            other => return Err(unexpected_query(other)),
+        };
+        let bpm = p.bpm.unwrap_or(arr.bpm);
+        let interval = match (p.interval_secs, p.interval_beats, p.interval_bars) {
+            (Some(s), _, _) => s,
+            (None, Some(b), _) if bpm > 0.0 => b * 60.0 / bpm,
+            (None, None, Some(bars)) if bpm > 0.0 => {
+                bars * p.beats_per_bar.unwrap_or(4.0) * 60.0 / bpm
+            }
+            _ => {
+                return Err(McpError::invalid_params(
+                    "need interval_secs, or interval_beats/interval_bars with a positive bpm",
+                    None,
+                ));
+            }
+        };
+        if interval <= 0.0 || p.count == 0 {
+            return Err(McpError::invalid_params(
+                "interval must be > 0 and count >= 1",
+                None,
+            ));
+        }
+        let mut placed: Vec<PlacedClip> = Vec::new();
+        for (ti, track) in arr.tracks.iter().enumerate() {
+            if let Some(only) = p.track {
+                if only != ti {
+                    continue;
+                }
+            }
+            for clip in &track.clips {
+                for k in 1..=p.count {
+                    let mut c = clip.clone();
+                    c.start += interval * k as f64;
+                    placed.push(PlacedClip { track: ti, clip: c });
+                }
+            }
+        }
+        if placed.is_empty() {
+            return Ok(text("no clips to duplicate"));
+        }
+        let n = placed.len();
+        self.dispatch(EditorCommand::EditArrange {
+            op: ArrangeOp::PasteClips { clips: placed },
+        })
+        .await?;
+        Ok(text(format!(
+            "duplicated {n} clip placement(s): interval {interval:.4}s × {} cop{}",
+            p.count,
+            if p.count == 1 { "y" } else { "ies" }
+        )))
+    }
+
+    // ── beat/bar time math ───────────────────────────────────────────────────
+
+    #[tool(
+        description = "Convert beats and/or bars to seconds at a given BPM, so you \
+        never hand-compute clip start/length. secs = (beats + bars*beats_per_bar) * \
+        60 / bpm. beats_per_bar defaults to 4. The active arrangement's BPM is in \
+        get_arrangement."
+    )]
+    async fn beats_to_secs(
+        &self,
+        Parameters(p): Parameters<BeatsParams>,
+    ) -> Result<CallToolResult, McpError> {
+        if p.bpm <= 0.0 {
+            return Err(McpError::invalid_params("bpm must be > 0", None));
+        }
+        let beats_per_bar = p.beats_per_bar.unwrap_or(4.0);
+        let total_beats = p.beats.unwrap_or(0.0) + p.bars.unwrap_or(0.0) * beats_per_bar;
+        let secs = total_beats * 60.0 / p.bpm;
+        Ok(text(
+            serde_json::json!({
+                "bpm": p.bpm,
+                "beats_per_bar": beats_per_bar,
+                "total_beats": total_beats,
+                "secs": secs,
+            })
+            .to_string(),
+        ))
+    }
+
+    // ── samples & assets ─────────────────────────────────────────────────────
+
+    #[tool(
+        description = "Rename a sample (Sound or Arrangement) — fixes auto names \
+        like \"sound 11\"."
+    )]
+    async fn rename_sample(
+        &self,
+        Parameters(p): Parameters<RenameSampleParams>,
+    ) -> Result<CallToolResult, McpError> {
+        self.dispatch(EditorCommand::RenameSample {
+            id: p.sample,
+            name: p.name,
+        })
+        .await
+    }
+
+    #[tool(
+        description = "Re-bounce every Sound whose bounce is missing or stale (not \
+        clean), in one batch. Renders are async — re-query list_samples / list_assets \
+        to confirm they all went clean."
+    )]
+    async fn bounce_all_dirty(&self) -> Result<CallToolResult, McpError> {
+        let assets = match self.query_result(EditorQuery::Assets).await? {
+            QueryResult::Assets(a) => a,
+            other => return Err(unexpected_query(other)),
+        };
+        let stale: Vec<&AssetInfo> = assets.iter().filter(|a| a.bounce != "clean").collect();
+        if stale.is_empty() {
+            return Ok(text("all bounces are clean — nothing to do"));
+        }
+        let names: Vec<String> = stale
+            .iter()
+            .map(|a| format!("{} ({})", a.name, a.bounce))
+            .collect();
+        let cmds: Vec<EditorCommand> = stale
+            .iter()
+            .map(|a| EditorCommand::Bounce {
+                sample: a.id,
+                duration_secs: None,
+            })
+            .collect();
+        match self.req(Request::DispatchBatch(cmds)).await? {
+            Response::Ok => Ok(text(format!(
+                "started bouncing {} sound(s): {}",
+                names.len(),
+                names.join(", ")
+            ))),
+            Response::Err(e) => Err(McpError::internal_error(e, None)),
+            other => Err(unexpected(other)),
+        }
+    }
+
+    #[tool(
+        description = "Report, per clip in the active arrangement, whether its source \
+        Sound's bounce is clean / stale / missing — so you can spot clips playing an \
+        out-of-date bounce before exporting. Pair with bounce_all_dirty to fix them."
+    )]
+    async fn arrangement_bounce_report(&self) -> Result<CallToolResult, McpError> {
+        let arr = match self.query_result(EditorQuery::Arrangement).await? {
+            QueryResult::Arrangement(Some(a)) => a,
+            QueryResult::Arrangement(None) => {
+                return Err(McpError::invalid_params(
+                    "active sample is not an arrangement — set_active_sample to one first",
+                    None,
+                ));
+            }
+            other => return Err(unexpected_query(other)),
+        };
+        let assets = match self.query_result(EditorQuery::Assets).await? {
+            QueryResult::Assets(a) => a,
+            other => return Err(unexpected_query(other)),
+        };
+        let lookup = |id: SampleId| assets.iter().find(|a| a.id == id);
+        let mut clips = Vec::new();
+        let (mut clean, mut stale, mut missing) = (0u32, 0u32, 0u32);
+        for (ti, track) in arr.tracks.iter().enumerate() {
+            for (ci, clip) in track.clips.iter().enumerate() {
+                let info = lookup(clip.source);
+                let status = match info.map(|a| a.bounce.as_str()) {
+                    Some("clean") => {
+                        clean += 1;
+                        "clean"
+                    }
+                    Some("dirty") => {
+                        stale += 1;
+                        "stale"
+                    }
+                    // "none" (never bounced) or source no longer a bounceable Sound.
+                    _ => {
+                        missing += 1;
+                        "missing"
+                    }
+                };
+                clips.push(serde_json::json!({
+                    "track": ti,
+                    "clip": ci,
+                    "source": clip.source,
+                    "name": info.map(|a| a.name.clone()).unwrap_or_default(),
+                    "bounce": status,
+                }));
+            }
+        }
+        Ok(text(
+            serde_json::json!({
+                "clips": clips,
+                "summary": { "clean": clean, "stale": stale, "missing": missing },
+            })
+            .to_string(),
+        ))
+    }
+
+    #[tool(
+        description = "Return the recommended Cargo.toml dependency snippet for \
+        authoring an awsm-audio WASM DSP worklet (the crates.io release). Paste it \
+        into your worklet crate, then follow the awsm-audio://docs/worklet-abi guide."
+    )]
+    async fn worklet_cargo_toml(&self) -> Result<CallToolResult, McpError> {
+        Ok(text(WORKLET_CARGO_TOML))
     }
 
     // ── worklet authoring ────────────────────────────────────────────────────
@@ -523,6 +997,21 @@ impl EditorMcp {
         }
     }
 
+    /// Dispatch an [`ArrangeOp`] against the active Arrangement sample.
+    async fn arrange(&self, op: ArrangeOp) -> Result<CallToolResult, McpError> {
+        self.dispatch(EditorCommand::EditArrange { op }).await
+    }
+
+    /// Run a query and hand back the typed [`QueryResult`] (for tools that compose
+    /// over the result rather than just relaying its JSON).
+    async fn query_result(&self, q: EditorQuery) -> Result<QueryResult, McpError> {
+        match self.req(Request::Query(q)).await? {
+            Response::Query(qr) => Ok(*qr),
+            Response::Err(e) => Err(McpError::internal_error(e, None)),
+            other => Err(unexpected(other)),
+        }
+    }
+
     async fn query(&self, q: EditorQuery) -> Result<CallToolResult, McpError> {
         match self.req(Request::Query(q)).await? {
             Response::Query(qr) => Ok(text(
@@ -572,7 +1061,15 @@ impl ServerHandler for EditorMcp {
              dedicated tool), bounce a Sound and call render_wav / wav_stats / \
              waveform to inspect the result. To add a custom DSP node, read the \
              awsm-audio://docs/worklet-abi resource, author + build a worklet crate, and \
-             attach it with the attach_wasm tool."
+             attach it with the attach_wasm tool.\n\n\
+             For a song / full-track / genre request, work arrangement-first instead \
+             of one monolithic root sequencer: build and bounce each part (drums, \
+             bass, chords/skank, FX) as its own short loop Sound, then create_arrangement \
+             and place clips into sections (intro / drop / switch / outro) — \
+             add_arrangement_track + add_clip, with beats_to_secs / duplicate_clips for \
+             the timing. Check wav_stats / waveform after every major bounce (they catch \
+             a too-short render, a hot/clipping bounce, overlapping clips). See the \
+             awsm-audio://docs/genres resource for per-genre checklists."
                 .to_string(),
         );
         info
@@ -635,6 +1132,12 @@ impl ServerHandler for EditorMcp {
                 "How to author a WASM DSP worklet against awsm-audio-worklet, build \
                  it, and attach it with attach_wasm — with a minimal Gain example.",
             ),
+            res(
+                "awsm-audio://docs/genres",
+                "Genre style checklists",
+                "Arrangement-first workflow + short per-genre style checklists \
+                 (drums, bass, harmony, FX, sectioning) for common electronic genres.",
+            ),
         ]))
     }
 
@@ -646,6 +1149,7 @@ impl ServerHandler for EditorMcp {
         let body = match req.uri.as_str() {
             "awsm-audio://docs/vocabulary" => VOCABULARY_DOC,
             "awsm-audio://docs/worklet-abi" => WORKLET_ABI_DOC,
+            "awsm-audio://docs/genres" => GENRES_DOC,
             other => {
                 return Err(McpError::resource_not_found(
                     format!("unknown resource {other}"),
@@ -754,6 +1258,39 @@ These wrap a nested op, itself adjacently tagged by `op`/`args`:
 
 Tuple-variant ops take a bare value as `args` (e.g. `set_bpm` → `"args":120.0`).
 
+### Every ArrangeOp (the `op` inside edit_arrange)
+
+Most of these now have a dedicated tool (shown in parens) — prefer it; use
+edit_arrange only for the few without one. All edit the *active* Arrangement.
+
+    set_bpm           "args": 120.0                              (set_arrangement_bpm)
+    set_length_secs   "args": 32.0                               (set_arrangement_length)
+    set_markers       {"start":0.0,"end":8.0}  // both null clears (set_arrangement_markers)
+    add_track         (no args)                                  (add_arrangement_track)
+    remove_track      {"track":0}                                (remove_arrangement_track)
+    set_track_name    {"track":0,"name":"Drums"}                 (set_track_name)
+    set_track_gain    {"track":0,"gain":0.8}                     (set_track_gain)
+    set_track_mute    {"track":0,"mute":true}
+    set_track_solo    {"track":0,"solo":true}
+    add_clip          {"track":0,"start":0.0,"source":"<id>","length":4.0}  (add_clip)
+    remove_clip       {"track":0,"clip":2}                       (remove_clip)
+    paste_clip        {"track":0,"clip":{<full Clip>}}
+    paste_clips       {"clips":[{"track":0,"clip":{<Clip>}}, …]}  (duplicate_clips builds these)
+    move_clip         {"track":0,"clip":2,"new_track":1,"start":8.0}
+    resize_clip       {"track":0,"clip":2,"length":4.0}
+    stretch_clip      {"track":0,"clip":2,"length":4.0,"speed":1.0}
+    set_clip_offset   {"track":0,"clip":2,"offset":0.5}
+    trim_start        {"track":0,"clip":2,"start":1.0,"offset":0.5}
+    split_clip        {"track":0,"clip":2,"at":4.0}
+    set_clip_gain     {"track":0,"clip":2,"gain":0.7}            (set_clip_gain)
+    set_clip_loop     {"track":0,"clip":2,"looping":true}
+    clear             (no args) — drop every clip, keep tracks   (clear_arrangement)
+
+Times are in seconds. Use `beats_to_secs {bpm,beats,bars}` to convert beats/bars
+(get_arrangement reports the active arrangement's bpm). `duplicate_clips` tiles a
+track's clips at a bar/beat interval. `arrangement_bounce_report` flags clips whose
+source bounce is stale/missing; `bounce_all_dirty` re-bounces them.
+
 ## EditorQuery (run_query)
 
 Adjacently tagged by `query`/`args`. Unit variants need no args:
@@ -818,8 +1355,10 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-awsm-audio-worklet = { path = "PATH/TO/packages/crates/worklet" }
+awsm-audio-worklet = "0.1"
 ```
+
+(The `worklet_cargo_toml` tool returns this snippet ready to paste.)
 
 `src/lib.rs` — implement `Processor` and call `awsm_worklet!` exactly once:
 
@@ -874,6 +1413,63 @@ A compile error here is yours to fix — it shows up in your own build output.
    `render_wav` / `wav_stats` to hear/inspect the result.
 
 A module that compiles but violates the ABI returns the error from `attach_wasm`.
+
+## 4. Driving a worklet source for a real duration
+
+A worklet used directly as a *source* Sound often renders only a tiny default
+window when you bounce it — there's no note/gate telling it how long to sound. Two
+ways to capture a real-length render:
+
+- Quick: `bounce` (or `render_wav`) with `duration_secs` set — forces a fixed-length
+  offline render of the procedural source.
+- Musical (the robust pattern): wrap it in a sequencer-triggered voice, then bounce
+  the wrapper —
+  1. make the worklet its own source Sound;
+  2. make a second Sound with a Note Sequencer;
+  3. add a Sample-ref to the worklet Sound and bind a track's output to it;
+  4. trigger it with a long note (the note length is the sounding length);
+  5. `bounce` the wrapper Sound — that's your arrangement-ready clip.
+
+Either way, follow with `wav_stats` / `waveform` to confirm the length and level.
+"#;
+
+/// Arrangement-first workflow + per-genre style checklists, served as the
+/// `awsm-audio://docs/genres` resource. Nudges song requests toward bounced
+/// loops + a sectioned arrangement instead of one monolithic root sequencer.
+const GENRES_DOC: &str = r#"# Building a track: arrangement-first + genre checklists
+
+## The workflow (any genre)
+
+Don't build one giant root sequencer. Build *parts*, bounce them, arrange them:
+
+1. For each part — drums, bass, chords/skank, FX/calls — author a short loop Sound
+   (graph or sequencer-driven instrument), then `bounce` it. Check `wav_stats` /
+   `waveform` after each bounce (catch a too-short render, a hot/clipping bounce).
+2. `create_arrangement`; `add_arrangement_track` one per part; name them
+   (`set_track_name`).
+3. Place clips into sections — intro / drop / switch / outro — with `add_clip`
+   (use `beats_to_secs` for the `start`; `get_arrangement` has the BPM).
+4. Tile loops across a section with `duplicate_clips` (interval in bars/beats).
+5. Balance with `set_track_gain` / `set_clip_gain`. Set loop/export markers
+   (`set_arrangement_markers`) to render a region.
+6. Before exporting: `arrangement_bounce_report` to spot stale/missing clip
+   bounces, `bounce_all_dirty` to fix them, then `render_wav` / `wav_stats` on the
+   arrangement (watch for clipping from overlapping clips).
+
+## Per-genre checklists
+
+### Ragga jungle (~160–175 BPM)
+- Chopped break (e.g. Amen): slice + re-sequence, don't loop it flat.
+- Deep sub bass (sine/triangle), often a reggae-style bassline.
+- Offbeat reggae "skank" stabs (organ/stab on the off-beats).
+- Dub FX: delay + reverb throws on stabs and one-shots.
+- Siren / call-and-response vocal-style accents.
+- Sectioned arrangement: intro (filtered/sparse) → drop (full break+sub) →
+  switch (re-chop / bass change) → outro.
+
+(Other genres follow the same shape — swap the parts: e.g. house = four-on-the-floor
+kick, offbeat hats, bass, chord stabs, vocal/FX; techno = driving kick, rumble bass,
+percussion layers, atmospheric FX. Build each as a loop, bounce, arrange.)
 "#;
 
 fn text(s: impl Into<String>) -> CallToolResult {
@@ -883,6 +1479,28 @@ fn text(s: impl Into<String>) -> CallToolResult {
 fn unexpected(resp: Response) -> McpError {
     McpError::internal_error(format!("unexpected response: {resp:?}"), None)
 }
+
+fn unexpected_query(qr: QueryResult) -> McpError {
+    McpError::internal_error(format!("unexpected query result: {qr:?}"), None)
+}
+
+/// The crates.io dependency snippet returned by `worklet_cargo_toml`. Kept in
+/// lockstep with the published `awsm-audio-worklet` version.
+const WORKLET_CARGO_TOML: &str = r#"# Cargo.toml for an awsm-audio WASM DSP worklet
+[package]
+name = "my-worklet"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+awsm-audio-worklet = "0.1"
+
+# Build: cargo build -p my-worklet --target wasm32-unknown-unknown --release
+# Attach the resulting .wasm with the attach_wasm tool.
+"#;
 
 /// A tool argument that is **strongly typed** — its JSON Schema is exactly `T`'s,
 /// so a fresh agent sees the precise shape — yet tolerant of clients that deliver

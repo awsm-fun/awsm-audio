@@ -12,6 +12,8 @@ includes:
     taskfile: ./taskfiles/frontend/editor.yml
   mcp:
     taskfile: ./taskfiles/mcp.yml
+  publish:
+    taskfile: ./taskfiles/publish.yml
 
 tasks:
   default:

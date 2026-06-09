@@ -15,6 +15,7 @@ pub mod modal;
 pub mod node;
 pub mod palette;
 pub mod piano_roll;
+pub mod sample_picker_modal;
 pub mod samples;
 pub mod transport;
 pub mod waveform;
@@ -109,6 +110,7 @@ pub fn render() -> Dom {
         .child(examples_modal::render())
         .child(help_modal::render())
         .child(mcp_modal::render())
+        .child(sample_picker_modal::render())
         .child(piano_roll::render())
     })
 }

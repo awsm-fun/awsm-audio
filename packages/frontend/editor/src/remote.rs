@@ -273,7 +273,8 @@ async fn serve_one(mut send: SendStream, mut recv: RecvStream) {
         Ok(Request::RenderWav {
             sample,
             sample_rate,
-        }) => render_wav(sample, sample_rate).await,
+            duration_secs,
+        }) => render_wav(sample, sample_rate, duration_secs).await,
         Ok(Request::AttachWasm {
             node,
             wasm_base64,
@@ -360,9 +361,13 @@ fn dispatch(req: Request) -> Response {
 }
 
 /// Offline-render a Sound and return the `.wav` bytes.
-async fn render_wav(sample: Option<SampleId>, sample_rate: Option<f32>) -> Response {
+async fn render_wav(
+    sample: Option<SampleId>,
+    sample_rate: Option<f32>,
+    duration_secs: Option<f64>,
+) -> Response {
     let ctrl = controller();
-    match ctrl.render_pcm(sample, sample_rate).await {
+    match ctrl.render_pcm(sample, sample_rate, duration_secs).await {
         Ok((channels, rate)) => Response::Wav(crate::util::encode_wav(&channels, rate)),
         Err(e) => Response::Err(e),
     }
@@ -377,7 +382,7 @@ async fn render_query(q: EditorQuery) -> Response {
         _ => unreachable!("render_query only handles the WAV queries"),
     };
     let ctrl = controller();
-    match ctrl.render_pcm(sample, None).await {
+    match ctrl.render_pcm(sample, None, None).await {
         Ok((channels, rate)) => {
             let qr = if want_waveform {
                 QueryResult::Waveform(WaveformEnvelope::from_pcm(&channels, rate, buckets))
