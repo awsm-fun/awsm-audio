@@ -73,26 +73,31 @@ fn status_button(status: RemoteStatus) -> Dom {
 /// [`crate::theme`]) while the agent is serving requests; calm + muted when idle.
 fn activity_chip(working: bool) -> Dom {
     html!("div", {
-        .style("display", "flex")
+        .style("display", "inline-flex")
         .style("align-items", "center")
-        .style("gap", "4px")
-        .style("font-size", "11px")
+        .style("gap", "5px")
+        // Match the Sm MCP button's footprint exactly (height/font/radius).
+        .style("height", "26px")
+        .style("box-sizing", "border-box")
+        .style("padding", "0 11px")
+        .style("border-radius", "var(--r2)")
+        .style("border-style", "solid")
+        .style("border-width", "1px")
+        .style("font-size", "12.5px")
         .style("font-weight", "550")
-        .style("padding", "2px 8px")
-        .style("border-radius", "999px")
         .style("white-space", "nowrap")
         .style("user-select", "none")
         .apply(|d| if working {
             d.style("color", "var(--accent-bright)")
                 .style("background", "oklch(0.7 0.13 230 / 0.16)")
-                .style("border", "1px solid var(--accent-line)")
+                .style("border-color", "var(--accent-line)")
                 // Pulse the whole chip's opacity while work is in flight.
                 .style("animation", "mcp-pulse 1.1s ease-in-out infinite")
                 .attr("title", "Agent is working — changes are landing live; wait for idle before editing or exporting.")
         } else {
             d.style("color", "var(--text-3)")
                 .style("background", "transparent")
-                .style("border", "1px solid var(--line)")
+                .style("border-color", "var(--line)")
                 .attr("title", "Agent idle — safe to edit / export.")
         })
         .child(html!("span", { .text("🤖") }))
