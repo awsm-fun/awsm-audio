@@ -45,6 +45,32 @@ The full browser/MCP-client round-trip was run by hand and passed:
   temp dir (`std::env::temp_dir()`), which on macOS is `/var/folders/.../T/`, not
   `/tmp`.
 
+### Extra feature coverage exercised live (same session)
+
+Beyond the checklist, every tool was driven and behaved correctly:
+
+- **Custom WASM DSP actually processes audio:** wired `oscillator → gain-worklet`
+  with `connect`, then `set_field` the discovered `gain` param → render `wav_stats`
+  scaled exactly: gain 1.0 → peak 1.000 (rms 0.707), 0.5 → 0.500 (0.354), 0.25 →
+  0.250 (0.177). Linear, as the Gain crate dictates.
+- **Bounce + asset lifecycle:** `bounce` the root → `get_bounce_status` `clean`,
+  `list_assets` shows it (6.0 s); after a later `set_field` the status correctly
+  flipped to `dirty` (source-hash staleness tracking).
+- **Arrangement:** `add_sample(arrangement)` → `edit_arrange add_track` /
+  `add_clip` (via `dispatch_command`) → `get_arrangement` shows "Track 1" with the
+  bounced "main" Sound as a clip whose length auto-derived from the 6.0 s bounce
+  (cross-sample reference intact).
+- **Batch + structural:** `dispatch_batch` added two Gain nodes in one call (a bad
+  command in a batch is rejected wholesale at parse time — no partial state);
+  `remove_node` deleted a node; `get_transport` / `run_query` (escape hatch, all
+  query forms incl. `args`) all correct.
+
+Net: all 21 tools verified live (`get_snapshot`, `list_samples`, `list_assets`,
+`get_arrangement`, `get_transport`, `get_bounce_status`, `render_wav`,
+`wav_stats`, `waveform`, `play`, `stop`, `add_node`, `remove_node`, `connect`,
+`set_field`, `bounce`, `set_root`, `attach_wasm`, `dispatch_command`,
+`dispatch_batch`, `run_query`).
+
 ## Natively covered (unattended — green at every commit)
 
 - **`task lint`** (`cargo fmt --all -- --check` + `cargo clippy --all
