@@ -76,8 +76,6 @@ Prebuilt binaries — no toolchain needed:
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/dakom/awsm-audio/releases/latest/download/awsm-audio-mcp-installer.sh | sh
 # Windows (PowerShell)
 powershell -ExecutionPolicy Bypass -c "irm https://github.com/dakom/awsm-audio/releases/latest/download/awsm-audio-mcp-installer.ps1 | iex"
-# Homebrew (macOS / Linux)
-brew install dakom/tap/awsm-audio-mcp
 ```
 
 From source: `cargo install --git https://github.com/dakom/awsm-audio awsm-audio-mcp`,
