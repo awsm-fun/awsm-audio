@@ -4,10 +4,9 @@
 > pass: `task lint` green, protocol tests pass, a headless smoke test of the HTTP
 > surface (ws upgrade → 101, `/renders` POST→GET, `/debug` → "no editor attached"),
 > and `dist build` produces a working `awsm-audio-mcp` binary. **Still requires the
-> user** before a release: (a) create the public `dakom/homebrew-tap` repo + a
-> `HOMEBREW_TAP_TOKEN` repo secret, (b) tag `v0.1.0` to trigger the release
-> workflow, and (c) the *live* parts of build gate 2 (browser attach, render
-> upload, multi-tab pairing/isolation) — these need a real browser + MCP client.
+> user** before a release: (a) tag `v0.1.0` to trigger the release workflow, and
+> (b) the *live* parts of build gate 2 (browser attach, render upload, multi-tab
+> pairing/isolation) — these need a real browser + MCP client.
 
 The `awsm-audio-mcp` server was built over WebTransport. This plan replaced the
 transport with a WebSocket, moved render bytes off the link, made agent↔tab
@@ -55,7 +54,7 @@ routing fully isolated, and set up binary distribution. Every decision below is
    the server to cross agent↔tab wires. Pairing: auto-bind when unambiguous, else
    a code entered editor-side via `?pair=` or the connect modal.
 4. **Distribution via `dist`.** Prebuilt binaries on GitHub Releases; `curl|sh`
-   canonical, Homebrew alias. Not crates.io.
+   canonical, plus PowerShell and `cargo install --git`. Not crates.io.
 
 **Order:** Phase 1 (renders off-link) → Phase 2 (WebSocket + isolation) →
 Phase 3 (distribution). Phase 1 is transport-agnostic and makes the link
@@ -286,16 +285,14 @@ Prebuilt binaries build from the workspace, so this is a non-issue.
 
 1. `dist init` — targets: **macOS arm64 + x86_64, Linux x86_64, Windows
    x86_64-msvc** (skip Linux arm64 + WinGet/Scoop for v1). Installers: `shell`,
-   `powershell`, `homebrew`.
-2. Create the tap repo `dakom/homebrew-tap`; point `dist` at it.
-3. Commit the generated `.github/workflows/release.yml`; a `v*` tag → build all
-   targets → publish binaries + checksums + installers → update the tap.
-4. README install lines:
+   `powershell`.
+2. Commit the generated `.github/workflows/release.yml`; a `v*` tag → build all
+   targets → publish binaries + checksums + installers.
+3. README install lines:
    - `curl --proto '=https' --tlsv1.2 -LsSf https://github.com/dakom/awsm-audio/releases/latest/download/awsm-audio-mcp-installer.sh | sh`
    - `powershell -ExecutionPolicy Bypass -c "irm https://github.com/dakom/awsm-audio/releases/latest/download/awsm-audio-mcp-installer.ps1 | iex"`
-   - `brew install dakom/tap/awsm-audio-mcp`
    - footnote: `cargo install --git https://github.com/dakom/awsm-audio awsm-audio-mcp`
-5. `dist` packages only the `awsm-audio-mcp` bin; frontends (Cloudflare Pages) and
+4. `dist` packages only the `awsm-audio-mcp` bin; frontends (Cloudflare Pages) and
    library crates (crates.io via `taskfiles/publish.yml`) are untouched.
 
 ### Build gate 3
