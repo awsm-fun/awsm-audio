@@ -90,6 +90,8 @@ pub struct EditorController {
     pub sample_picker_open: Mutable<bool>,
     /// Whether the page Help / onboarding modal is open.
     pub help_open: Mutable<bool>,
+    /// Which Help tab to show when it opens (set by `open_help_at`).
+    pub help_tab: Mutable<usize>,
     /// Open node context menu: `(node, screen_x, screen_y)`.
     pub context_menu: Mutable<Option<(ContextTarget, f64, f64)>>,
     /// The single selected node, if exactly one — drives the inspector.
@@ -270,6 +272,7 @@ impl EditorController {
             examples_open: Mutable::new(false),
             sample_picker_open: Mutable::new(false),
             help_open: Mutable::new(false),
+            help_tab: Mutable::new(0),
             context_menu: Mutable::new(None),
             inspected: Mutable::new(None),
             inspector_rev: Mutable::new(0),
@@ -3680,6 +3683,12 @@ impl EditorController {
 
     /// Open / close the page Help / onboarding modal.
     pub fn open_help(&self) {
+        self.open_help_at(0);
+    }
+    /// Open the Help modal showing tab `tab` (the help modal reads `help_tab` to
+    /// pick its initial tab — e.g. jump straight to the MCP section).
+    pub fn open_help_at(&self, tab: usize) {
+        self.help_tab.set(tab);
         self.help_open.set(true);
     }
     pub fn close_help_page(&self) {

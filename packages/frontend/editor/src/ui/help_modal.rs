@@ -20,6 +20,15 @@ pub fn render() -> Dom {
     })
 }
 
+/// Index of the "Using the MCP" tab — so other surfaces (the MCP connect modal)
+/// can deep-link straight to it via [`open_help_at`](crate::controller::EditorController::open_help_at).
+pub fn mcp_tab_index() -> usize {
+    tabs()
+        .iter()
+        .position(|(label, _)| *label == "Using the MCP")
+        .unwrap_or(0)
+}
+
 /// The tabs, each `(label, sections)` where a section is `(heading, paragraphs)`
 /// and a paragraph starting with "•" renders as an indented bullet. Kept honest
 /// with the actual UI — update alongside behavior changes.
@@ -396,7 +405,7 @@ fn tabs() -> Vec<Tab> {
 
 fn view() -> Dom {
     let tabs = tabs();
-    let active = Mutable::new(0usize);
+    let active = Mutable::new(controller().help_tab.get());
     // Two siblings: a click-to-close backdrop behind the panel, and a
     // pointer-events-transparent centering layer holding the panel (so panel
     // clicks never bubble to close — dominator's Click propagation doesn't honor
