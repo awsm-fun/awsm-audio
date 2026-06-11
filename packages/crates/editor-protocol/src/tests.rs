@@ -134,11 +134,13 @@ fn editor_query_round_trip() {
         EditorQuery::Transport,
         EditorQuery::WavStats {
             sample: None,
+            bounced: true,
             duration_secs: None,
         },
         EditorQuery::Waveform {
             sample: Some(SampleId::new()),
             buckets: 256,
+            bounced: false,
             duration_secs: Some(3.0),
         },
     ];
@@ -173,14 +175,12 @@ fn query_result_round_trip() {
             rms: 0.6,
             channels: 2,
             sample_rate: 48_000,
-            source: Some("stored_bounce".into()),
         }),
         QueryResult::Waveform(WaveformEnvelope {
             sample_rate: 48_000,
             duration_secs: 2.0,
             min: vec![-1.0, -0.5],
             max: vec![1.0, 0.5],
-            source: Some("fresh_render".into()),
         }),
     ];
     for r in &results {

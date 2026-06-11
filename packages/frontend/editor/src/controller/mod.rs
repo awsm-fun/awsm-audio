@@ -1373,6 +1373,11 @@ impl EditorController {
     /// future MCP transport calls (via [`editor_query_toml`](crate::editor_query_toml)).
     pub fn query(&self, q: EditorQuery) -> QueryResult {
         use command::{AssetInfo, SampleInfo, TransportInfo};
+        // Flush the live canvas into its sample first, so reads of the active
+        // sample's graph (bounce status / dirty detection, assets, samples) reflect
+        // edits made since the last commit — otherwise an uncommitted set_field
+        // leaves the bounce looking falsely "clean".
+        self.commit_active();
         match q {
             EditorQuery::Snapshot => QueryResult::Snapshot(Box::new(self.snapshot())),
             EditorQuery::Project => QueryResult::Project(Box::new(self.to_project())),
@@ -3353,27 +3358,27 @@ impl EditorController {
     /// (`RenderWav`/`WavStats`/`Waveform`). Reuses [`bounce_job_for`] +
     /// [`awsm_audio_player::bounce::render`], the same path Bounce/export use; an
     /// optional `sample_rate` overrides the bounce rate.
-    /// PCM for a stats / waveform readback, plus where it came from. With no
-    /// `duration_secs` override and a **clean** stored bounce, returns that
-    /// bounce's PCM (`"stored_bounce"`) — the asset that actually plays in an
-    /// arrangement. Otherwise (an explicit `duration_secs`, or a dirty / absent
-    /// bounce — e.g. mid sound-design after an edit) a fresh offline render
-    /// (`"fresh_render"`) of the live graph. The `source` tag lets a caller tell
-    /// the two apart, and `duration_secs` is the escape hatch to force a
-    /// full-length fresh render of the live sound.
+    /// PCM for a stats / waveform readback. `bounced = false` renders the **live
+    /// graph** fresh (what the sound is right now — the sound-design view), at the
+    /// `duration_secs` window or the auto length. `bounced = true` returns the
+    /// **stored bounced asset's** PCM (what plays in an arrangement), or an
+    /// explicit "not yet bounced" error if there is none — the caller chooses,
+    /// so there's no stale-vs-fresh guessing.
     pub async fn readback_pcm(
         &self,
         sample: Option<awsm_audio_schema::SampleId>,
+        bounced: bool,
         duration_secs: Option<f64>,
-    ) -> Result<(Vec<Vec<f32>>, u32, &'static str), String> {
-        let id = sample.unwrap_or_else(|| *self.root.borrow());
-        if duration_secs.is_none() && self.bounce_status(id) == BounceStatus::Clean {
-            if let Some((channels, rate)) = self.stored_bounce_pcm(id) {
-                return Ok((channels, rate, "stored_bounce"));
-            }
+    ) -> Result<(Vec<Vec<f32>>, u32), String> {
+        if bounced {
+            let id = sample.unwrap_or_else(|| *self.root.borrow());
+            return self.stored_bounce_pcm(id).ok_or_else(|| {
+                "not yet bounced — call bounce first, or use bounced=false to \
+                 measure the live graph"
+                    .to_string()
+            });
         }
-        let (channels, rate) = self.render_pcm(sample, None, duration_secs).await?;
-        Ok((channels, rate, "fresh_render"))
+        self.render_pcm(sample, None, duration_secs).await
     }
 
     /// The decoded PCM of a Sound's stored bounce, if it has one backed by inline

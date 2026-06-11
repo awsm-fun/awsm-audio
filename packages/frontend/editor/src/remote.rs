@@ -498,31 +498,29 @@ async fn upload_render(render_id: &str, wav: Vec<u8>) -> Result<(), String> {
 /// Offline-render a Sound and compute the numeric `WavStats` / `Waveform`
 /// readback (the analog of the renderer's pixel readbacks).
 async fn render_query(q: EditorQuery) -> Response {
-    let (sample, want_waveform, buckets, duration_secs) = match &q {
+    let (sample, want_waveform, buckets, bounced, duration_secs) = match &q {
         EditorQuery::WavStats {
             sample,
+            bounced,
             duration_secs,
-        } => (*sample, false, 0, *duration_secs),
+        } => (*sample, false, 0, *bounced, *duration_secs),
         EditorQuery::Waveform {
             sample,
             buckets,
+            bounced,
             duration_secs,
-        } => (*sample, true, *buckets, *duration_secs),
+        } => (*sample, true, *buckets, *bounced, *duration_secs),
         _ => unreachable!("render_query only handles the WAV queries"),
     };
     let ctrl = controller();
-    // Stored clean bounce vs fresh render of the live graph (see `readback_pcm`);
-    // the `source` tag is stamped onto the result so the caller knows which.
-    match ctrl.readback_pcm(sample, duration_secs).await {
-        Ok((channels, rate, source)) => {
+    // bounced=false → live graph; bounced=true → stored bounced asset (see
+    // `readback_pcm`). The caller chose, so there's nothing to disambiguate here.
+    match ctrl.readback_pcm(sample, bounced, duration_secs).await {
+        Ok((channels, rate)) => {
             let qr = if want_waveform {
-                let mut w = WaveformEnvelope::from_pcm(&channels, rate, buckets);
-                w.source = Some(source.to_string());
-                QueryResult::Waveform(w)
+                QueryResult::Waveform(WaveformEnvelope::from_pcm(&channels, rate, buckets))
             } else {
-                let mut s = WavStats::from_pcm(&channels, rate);
-                s.source = Some(source.to_string());
-                QueryResult::WavStats(s)
+                QueryResult::WavStats(WavStats::from_pcm(&channels, rate))
             };
             Response::Query(Box::new(qr))
         }
