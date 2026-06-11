@@ -54,6 +54,15 @@ pub struct EditorMcp {
 // ───────────────────────────── parameter types ──────────────────────────────
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct SnapshotParams {
+    /// `"full"` (default) returns everything; `"ids"` omits the (large) embedded
+    /// note_sequencer song events, returning node ids/kinds/wires + a per-track
+    /// `events_count`. Use `"ids"` for later round-trips once patterns are authored.
+    #[serde(default)]
+    pub detail: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct SampleArg {
     /// Target Sound/sample id (from `list_samples`). Omit to use the project root.
     #[serde(default)]
@@ -157,9 +166,25 @@ pub struct SetFieldParams {
     pub node: NodeId,
     /// Field key (from `get_node_fields` / `list_node_kinds`).
     pub key: String,
-    /// Numeric value (most fields). For a text/bool field, use `dispatch_command`
-    /// with a `FieldValue`.
-    pub value: f64,
+    /// The value: a number (most fields), a string (a choice/text field like an
+    /// oscillator `type`), or a bool. The right `FieldValue` is chosen from the
+    /// JSON type.
+    pub value: serde_json::Value,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct BindParams {
+    /// Sequencer node id (the SeqOut source).
+    pub from: NodeId,
+    /// Instrument Sample-ref node id (the trigger inlet to drive).
+    pub to: NodeId,
+    /// Output index in the sequencer's `outputs`. Give this OR `from_output_key`.
+    #[serde(default)]
+    pub from_output: Option<u32>,
+    /// Output KEY (e.g. `"t0"` or `"t2:n36"`) — resolved to its index for you, so
+    /// you needn't snapshot to learn output order. Give this OR `from_output`.
+    #[serde(default)]
+    pub from_output_key: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -417,10 +442,23 @@ impl EditorMcp {
         only — call list_samples to see every sample and switch with \
         set_active_sample. Each connection carries a stable `id` you can pass to \
         the `disconnect` command to remove that one wire without touching its \
-        endpoint nodes."
+        endpoint nodes. Pass `detail:\"ids\"` to omit the large embedded sequencer \
+        song events (keeps node ids/kinds/wires + per-track note counts) on later \
+        round-trips."
     )]
-    async fn get_snapshot(&self) -> Result<CallToolResult, McpError> {
-        self.query(EditorQuery::Snapshot).await
+    async fn get_snapshot(
+        &self,
+        Parameters(p): Parameters<SnapshotParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let qr = self.query_result(EditorQuery::Snapshot).await?;
+        let mut v = serde_json::to_value(&qr)
+            .map_err(|e| McpError::internal_error(format!("encode snapshot: {e}"), None))?;
+        if p.detail.as_deref() == Some("ids") {
+            slim_snapshot(&mut v);
+        }
+        Ok(text(
+            serde_json::to_string_pretty(&v).unwrap_or_else(|e| format!("{{\"error\":\"{e}\"}}")),
+        ))
     }
 
     #[tool(
@@ -669,15 +707,58 @@ impl EditorMcp {
         .await
     }
 
-    #[tool(description = "Set a numeric setting on a node (the SetField command).")]
+    #[tool(description = "Set a node setting (the SetField command). `value` may be \
+        a number (most fields), a string (a choice/text field like an oscillator \
+        `type`), or a bool — the field type is inferred from the JSON value.")]
     async fn set_field(
         &self,
         Parameters(p): Parameters<SetFieldParams>,
     ) -> Result<CallToolResult, McpError> {
+        let value = match p.value {
+            Value::Number(n) => FieldValue::Num(n.as_f64().unwrap_or(0.0)),
+            Value::String(s) => FieldValue::Text(s),
+            Value::Bool(b) => FieldValue::Bool(b),
+            other => {
+                return Err(McpError::invalid_params(
+                    format!("value must be a number, string, or bool (got {other})"),
+                    None,
+                ));
+            }
+        };
         self.dispatch(EditorCommand::SetField {
             id: p.node,
             key: p.key,
-            value: FieldValue::Num(p.value),
+            value,
+        })
+        .await
+    }
+
+    #[tool(
+        description = "Bind a Note Sequencer output to an instrument Sample-ref's \
+        trigger inlet (a SeqOut → Trigger wire). Identify the output by `from_output` \
+        (index) or `from_output_key` (its stable key like \"t0\" or \"t2:n36\", \
+        resolved to the index for you — so order changes don't break your call and \
+        you needn't snapshot first)."
+    )]
+    async fn bind(
+        &self,
+        Parameters(p): Parameters<BindParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let from_output = match (p.from_output, p.from_output_key) {
+            (Some(i), None) => i,
+            (None, Some(key)) => self.resolve_output_index(p.from, &key).await?,
+            (Some(_), Some(_)) => {
+                return Err(McpError::invalid_params(
+                    "give from_output OR from_output_key, not both",
+                    None,
+                ));
+            }
+            (None, None) => 0,
+        };
+        self.dispatch(EditorCommand::Bind {
+            from: p.from,
+            from_output,
+            to: p.to,
         })
         .await
     }
@@ -1473,6 +1554,46 @@ impl EditorMcp {
         self.dispatch(EditorCommand::EditArrange { op }).await
     }
 
+    /// Resolve a sequencer output key (e.g. `"t2:n36"`) to its index in node
+    /// `from`'s `outputs`, by reading the current snapshot. Errors if the node or
+    /// key isn't found (listing the available keys).
+    async fn resolve_output_index(&self, from: NodeId, key: &str) -> Result<u32, McpError> {
+        let qr = self.query_result(EditorQuery::Snapshot).await?;
+        let v = serde_json::to_value(&qr)
+            .map_err(|e| McpError::internal_error(format!("encode snapshot: {e}"), None))?;
+        let from = from.to_string();
+        let nodes = v
+            .pointer("/data/graph/nodes")
+            .and_then(Value::as_array)
+            .ok_or_else(|| McpError::internal_error("snapshot had no nodes", None))?;
+        let node = nodes
+            .iter()
+            .find(|n| n.get("id").and_then(Value::as_str) == Some(from.as_str()))
+            .ok_or_else(|| McpError::invalid_params(format!("no node {from}"), None))?;
+        let outputs = node
+            .pointer("/kind/props/outputs")
+            .and_then(Value::as_array)
+            .ok_or_else(|| {
+                McpError::invalid_params(
+                    format!("node {from} is not a sequencer with outputs"),
+                    None,
+                )
+            })?;
+        let mut keys = Vec::new();
+        for (i, out) in outputs.iter().enumerate() {
+            if let Some(k) = out.get("key").and_then(Value::as_str) {
+                if k == key {
+                    return Ok(i as u32);
+                }
+                keys.push(k.to_string());
+            }
+        }
+        Err(McpError::invalid_params(
+            format!("no output key '{key}' on node {from}; available: {}", keys.join(", ")),
+            None,
+        ))
+    }
+
     /// The active arrangement's BPM (for beat/bar → seconds conversion). Errors if
     /// the active sample isn't an arrangement.
     async fn arrangement_bpm(&self) -> Result<f64, McpError> {
@@ -2059,6 +2180,42 @@ fn content_type_for(path: &str) -> String {
 
 fn unexpected(resp: Response) -> McpError {
     McpError::internal_error(format!("unexpected response: {resp:?}"), None)
+}
+
+/// Drop the bulky embedded note_sequencer song events from a snapshot value
+/// (the `detail:"ids"` mode): replaces each sequencer track's `events` array with
+/// an empty one plus an `events_count`, leaving node ids/kinds/wires intact.
+/// Automation `events` on params are left untouched (small + useful).
+fn slim_snapshot(v: &mut Value) {
+    let Some(nodes) = v
+        .pointer_mut("/data/graph/nodes")
+        .and_then(Value::as_array_mut)
+    else {
+        return;
+    };
+    for node in nodes {
+        let Some(kind) = node.get_mut("kind") else {
+            continue;
+        };
+        if kind.get("kind").and_then(Value::as_str) != Some("note_sequencer") {
+            continue;
+        }
+        let Some(tracks) = kind
+            .pointer_mut("/props/song/tracks")
+            .and_then(Value::as_array_mut)
+        else {
+            continue;
+        };
+        for track in tracks {
+            let Some(obj) = track.as_object_mut() else {
+                continue;
+            };
+            if let Some(count) = obj.get("events").and_then(Value::as_array).map(Vec::len) {
+                obj.insert("events".into(), Value::Array(Vec::new()));
+                obj.insert("events_count".into(), Value::from(count));
+            }
+        }
+    }
 }
 
 /// Parse a bar-range section spec like `"3-12, 15-20"` into per-bar start
