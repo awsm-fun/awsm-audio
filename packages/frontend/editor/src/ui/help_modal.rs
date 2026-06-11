@@ -140,8 +140,16 @@ fn tabs() -> Vec<Tab> {
                 (
                     "4 · Point your agent at it",
                     vec![
-                        "Add the server to your agent's MCP config — for example an \
-                         .mcp.json (Claude Code, Cursor, and others read this):",
+                        "It's a streamable-HTTP MCP server, so every MCP client \
+                         connects to the same URL:",
+                        "$ http://127.0.0.1:9171/mcp",
+                        "Register it the way your agent does — for example:",
+                        "• Claude Code:",
+                        "$ claude mcp add --transport http awsm-audio http://127.0.0.1:9171/mcp",
+                        "• Codex: add it with `codex mcp add` (run `codex mcp --help` \
+                         for the exact form), pointing at the URL above.",
+                        "• Cursor / others: add an HTTP MCP server with that URL, or \
+                         drop this into the agent's MCP config (e.g. an .mcp.json):",
                         "$ { \"mcpServers\": { \"awsm-audio\": { \"type\": \"http\", \"url\": \"http://127.0.0.1:9171/mcp\" } } }",
                         "Then just ask: “build me a techno loop”, “add a reverb to \
                          this”, “bounce it and lay out an arrangement”. The agent \
@@ -414,6 +422,11 @@ fn view() -> Dom {
             .style("pointer-events", "none")
             .child(html!("div", {
                 .style("pointer-events", "auto")
+                // The page disables text selection (UI chrome); re-enable it inside
+                // the help panel so instructions/commands can be copied. WebKit/Blink
+                // need the prefixed property, which `body` set to `none`.
+                .style("user-select", "text")
+                .style_unchecked("-webkit-user-select", "text")
                 .style("width", "min(680px, 92vw)")
                 .style("max-height", "84vh")
                 .style("display", "flex")
@@ -558,6 +571,7 @@ fn paragraph(t: &'static str) -> Dom {
             .style("white-space", "pre-wrap")
             .style("overflow-wrap", "anywhere")
             .style("user-select", "all")
+            .style_unchecked("-webkit-user-select", "all")
             .text(code)
         });
     }

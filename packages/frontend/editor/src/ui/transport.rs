@@ -114,16 +114,31 @@ pub fn render() -> Dom {
 }
 
 /// The Help button: a rectangular, labelled call-to-action (keeping the `?`
-/// icon) parked beside the transport so it's easy to find.
+/// icon) parked beside the transport. Filled with a solid, elevated surface so it
+/// stands out from the (bg-2) bar instead of blending in.
 fn help_button() -> Dom {
-    Btn::new()
-        .label("Help")
-        .icon("help")
-        .variant(BtnVariant::Solid)
-        .size(BtnSize::Md)
-        .title("How to use this editor + the MCP")
-        .on_click(|| controller().open_help())
-        .render()
+    let ctrl = controller();
+    html!("button", {
+        .class("t")
+        .class("focusring")
+        .attr("title", "How to use this editor + the MCP")
+        .style("display", "inline-flex")
+        .style("align-items", "center")
+        .style("justify-content", "center")
+        .style("gap", "7px")
+        .style("height", "30px")
+        .style("padding", "0 15px")
+        .style("border", "1px solid var(--line-strong)")
+        .style("border-radius", "var(--r2)")
+        .style("background", "var(--bg-active)")
+        .style("color", "var(--text-0)")
+        .style("font-size", "12.5px")
+        .style("font-weight", "600")
+        .style("cursor", "pointer")
+        .child(Icon::new("help").size(15.0).render())
+        .child(html!("span", { .text("Help") }))
+        .event(clone!(ctrl => move |_: events::Click| ctrl.open_help()))
+    })
 }
 
 /// A 1px vertical rule separating top-bar groups.

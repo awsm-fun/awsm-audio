@@ -119,21 +119,26 @@ or `task mcp:install` from a clone (builds release → `~/.cargo/bin`).
    **🤖 working… / idle** chip tells you when it's safe to edit / when a render is
    done. (No connection → the editor runs normally with zero remote overhead.)
 
-3. **Point your agent at the server.** A ready-to-use [`.mcp.json`](.mcp.json) is
-   in the repo root:
+3. **Point your agent at the server.** It's a **streamable-HTTP** MCP server —
+   every client connects to the same URL: `http://127.0.0.1:9171/mcp`. Register it
+   the way your agent does:
 
-   ```json
-   {
-     "mcpServers": {
-       "awsm-audio": { "type": "http", "url": "http://127.0.0.1:9171/mcp" }
+   - **Claude Code**:
+     ```sh
+     claude mcp add --transport http awsm-audio http://127.0.0.1:9171/mcp
+     ```
+     (or a project-root `.mcp.json` is picked up automatically — see below.)
+   - **Codex**: add it with `codex mcp add` (run `codex mcp --help` for the exact
+     form), pointing at the URL above.
+   - **Cursor / others**: register an HTTP MCP server at that URL, or drop the
+     ready-to-use [`.mcp.json`](.mcp.json) (repo root) into the agent's config:
+     ```json
+     {
+       "mcpServers": {
+         "awsm-audio": { "type": "http", "url": "http://127.0.0.1:9171/mcp" }
+       }
      }
-   }
-   ```
-
-   - **Claude Code / Claude Desktop**: a project-root `.mcp.json` is picked up
-     automatically — restart the agent in this directory.
-   - **Other MCP clients**: register a streamable-HTTP MCP server at
-     `http://127.0.0.1:9171/mcp`.
+     ```
 
 ### What the agent can do
 
