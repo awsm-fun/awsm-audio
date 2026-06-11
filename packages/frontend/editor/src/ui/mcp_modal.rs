@@ -165,11 +165,32 @@ fn view() -> Dom {
                 .style("background", "var(--bg-2)")
                 .style("border", "1px solid var(--accent)")
                 .style("box-shadow", "0 24px 70px oklch(0 0 0 / 0.6)")
-                .child(html!("h2", {
+                .child(html!("div", {
+                    .style("display", "flex")
+                    .style("align-items", "center")
+                    .style("justify-content", "space-between")
+                    .style("gap", "12px")
                     .style("margin", "0 0 6px")
-                    .style("font-size", "17px")
-                    .style("font-weight", "650")
-                    .text("Connect to MCP server")
+                    .child(html!("h2", {
+                        .style("margin", "0")
+                        .style("font-size", "17px")
+                        .style("font-weight", "650")
+                        .text("Connect to MCP server")
+                    }))
+                    // Jump to the full MCP walkthrough (install / run / connect /
+                    // point an agent at it) — closes this modal, opens the help guide.
+                    .child(Btn::new()
+                        .label("Help")
+                        .icon("help")
+                        .variant(BtnVariant::Ghost)
+                        .size(BtnSize::Sm)
+                        .title("How the MCP works — open the help guide")
+                        .on_click(|| {
+                            open_state().set(false);
+                            crate::controller::controller()
+                                .open_help_at(crate::ui::help_modal::mcp_tab_index());
+                        })
+                        .render())
                 }))
                 .child(html!("p", {
                     .style("margin", "0 0 14px")

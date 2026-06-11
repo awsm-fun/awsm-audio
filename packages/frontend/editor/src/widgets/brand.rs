@@ -8,7 +8,16 @@ use super::icon::Icon;
 use crate::theme::ACCENT_FG;
 
 pub fn brand() -> Dom {
-    html!("div", {
+    html!("a", {
+        // Links home to awsm.fun — in a new tab so it never navigates away from
+        // unsaved editor work.
+        .attr("href", "https://awsm.fun")
+        .attr("target", "_blank")
+        .attr("rel", "noopener noreferrer")
+        .attr("title", "awsm.fun")
+        .style("text-decoration", "none")
+        .style("color", "inherit")
+        .style("cursor", "pointer")
         .style("display", "flex")
         .style("align-items", "center")
         .style("gap", "9px")

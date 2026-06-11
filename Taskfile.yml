@@ -10,6 +10,8 @@ includes:
     flatten: true
   editor:
     taskfile: ./taskfiles/frontend/editor.yml
+  example:
+    taskfile: ./taskfiles/frontend/example.yml
   mcp:
     taskfile: ./taskfiles/mcp.yml
   crates:
@@ -33,6 +35,12 @@ tasks:
       - editor:dev
       - mcp:serve
 
+  example-dev:
+    desc: "Run the standalone player example locally (http://localhost:9172) — not deployed."
+    cmds:
+      - task: worklets
+      - task: example:dev
+
   build:
     desc: "Build every frontend for production into .build-artifacts/"
     cmds:
@@ -43,6 +51,64 @@ tasks:
     desc: "Remove every frontend's dist + .build-artifacts output"
     cmds:
       - task: editor:clean
+      - task: example:clean
+
+  bump:
+    desc: "Set [workspace.package].version to <version> and refresh Cargo.lock — files only, NO git/tag/publish. Idempotent: re-running at the same version makes no diff, so it's safe to call repeatedly (and from `task publish`). Usage: task bump -- <version>"
+    vars:
+      VERSION: "{{.CLI_ARGS}}"
+    preconditions:
+      - sh: 'test -n "{{.VERSION}}"'
+        msg: "No version given. Usage: task bump -- <version>   (e.g. task bump -- 1.2.0)"
+    cmds:
+      # 1. The package version (members inherit it via `version.workspace = true`).
+      #    Scoped to [workspace.package] so it never touches a dependency's version.
+      - sed -i.bak -E '/^\[workspace\.package\]/,/^\[/ s/^version = "[^"]*"/version = "{{.VERSION}}"/' Cargo.toml
+      # 2. The internal awsm-audio-* dependency version reqs, kept in lockstep — so
+      #    published crates require each other at the matching version, not a stale
+      #    `^0.1.0` (which only happens to cover patch bumps within 0.1.x).
+      - sed -i.bak -E '/^awsm-audio-[a-z-]+ = \{ path =/ s/version = "[^"]*"/version = "{{.VERSION}}"/' Cargo.toml
+      - rm -f Cargo.toml.bak
+      # Refresh Cargo.lock so the workspace members' recorded versions match (and
+      # sanity-build the tree). A no-op when already at this version.
+      - cargo check --workspace --quiet
+
+  publish:
+    desc: "Release <version> end-to-end: bump → commit (only if needed) → tag → publish crates → deploy editor → push. Works whether the version was already bumped (e.g. in a merged PR) or not. Usage: task publish -- <version>"
+    vars:
+      VERSION: "{{.CLI_ARGS}}"
+    preconditions:
+      - sh: 'test -n "{{.VERSION}}"'
+        msg: "No version given. Usage: task publish -- <version>   (e.g. task publish -- 1.2.0)"
+      - sh: "git diff --quiet && git diff --cached --quiet"
+        msg: "Working tree is dirty — commit or stash before releasing."
+    cmds:
+      - echo "▶ Releasing v{{.VERSION}} …"
+      # 1. Ensure the version is set (idempotent — no-op if a PR already bumped it).
+      - task: bump
+        vars:
+          VERSION: "{{.VERSION}}"
+      # 2. Commit the bump ONLY if it changed anything. A tree already at this
+      #    version (bumped in a merged PR) produces no diff → no release commit,
+      #    so the repo is left untouched.
+      - |
+        if git diff --quiet -- Cargo.toml Cargo.lock; then
+          echo "  Already at v{{.VERSION}} (bumped earlier) — no release commit needed."
+        else
+          git add Cargo.toml Cargo.lock
+          git commit -m "Release v{{.VERSION}}"
+        fi
+      # 3. Tag the release (annotated). Pushing this tag triggers the cargo-dist
+      #    MCP-server release on CI.
+      - git tag -a "v{{.VERSION}}" -m "v{{.VERSION}}"
+      # 4. Publish the library crates (schema → player → worklet) to crates.io.
+      - task: crates:publish
+      # 5. Deploy the editor frontend to Cloudflare Pages.
+      - task: editor:deploy
+      # 6. Push the branch (no-op if already up to date) + the new tag.
+      - git push
+      - git push origin "v{{.VERSION}}"
+      - echo "✅ v{{.VERSION}} — crates published, editor deployed, tag pushed (MCP release building on CI)."
 
   lint:
     desc: "Run rustfmt + clippy with -D warnings (mirrors CI: wasm32 + host)."
