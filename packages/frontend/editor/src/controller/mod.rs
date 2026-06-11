@@ -1429,6 +1429,11 @@ impl EditorController {
             }
             EditorQuery::RenderPlan { sample } => QueryResult::RenderPlan(self.render_plan(sample)),
             EditorQuery::Arrangement => QueryResult::Arrangement(self.active_arrangement()),
+            // Served on the async render branch in `remote.rs` (it renders each
+            // track); this sync path is never reached for it.
+            EditorQuery::ArrangementTrackStats => {
+                QueryResult::ArrangementTrackStats(Vec::new())
+            }
             EditorQuery::Transport => QueryResult::Transport(TransportInfo {
                 playing: self.playing.get(),
                 peak: self.audio_peak(),
@@ -3400,6 +3405,75 @@ impl EditorController {
         awsm_audio_player::bounce::render_clips(clips, buffers, sr, duration)
             .await
             .map_err(|e| format!("{e}"))
+    }
+
+    /// Per-track peak/rms of the active arrangement, each track rendered in
+    /// isolation (soloed) over the effective window — the per-stem mix readback so
+    /// an agent can spot the hot track instead of rescaling everything. Skips empty
+    /// tracks (peak/rms 0). Async (one offline render per track).
+    pub async fn arrangement_track_stats(
+        &self,
+    ) -> Result<Vec<awsm_audio_editor_protocol::TrackStats>, String> {
+        use awsm_audio_editor_protocol::{TrackStats, WavStats};
+        self.commit_active();
+        let id = *self.active.borrow();
+        let arr = self
+            .arrangement_for(id)
+            .ok_or_else(|| "active sample is not an arrangement".to_string())?;
+        let (start, end) = arr.range();
+        let duration = (end - start).max(0.05);
+        if !self.ensure_player() {
+            return Err("audio player unavailable".into());
+        }
+        let (buffers, sr) = {
+            let p = self.player.borrow();
+            let p = p
+                .as_ref()
+                .ok_or_else(|| "audio player unavailable".to_string())?;
+            (p.clip_buffers(), p.sample_rate() as f32)
+        };
+        let base_lib = self.to_library();
+        let mut out = Vec::with_capacity(arr.tracks.len());
+        for (t, track) in arr.tracks.iter().enumerate() {
+            let (peak, rms) = if track.clips.is_empty() {
+                (0.0, 0.0)
+            } else {
+                // Clone the document and make track `t` the only audible one
+                // (solo it, clear others, force-unmute it) so audio_clip_parts —
+                // which honors mute/solo — yields just this stem.
+                let mut lib = base_lib.clone();
+                if let Some(a) = lib
+                    .sample_mut(id)
+                    .map(|s| &mut s.arrangement)
+                {
+                    for (i, tr) in a.tracks.iter_mut().enumerate() {
+                        tr.solo = i == t;
+                        if i == t {
+                            tr.mute = false;
+                        }
+                    }
+                }
+                let clips = awsm_audio_player::document::audio_clip_parts(&lib, id, start);
+                if clips.is_empty() {
+                    (0.0, 0.0)
+                } else {
+                    let (channels, rate) =
+                        awsm_audio_player::bounce::render_clips(clips, buffers.clone(), sr, duration)
+                            .await
+                            .map_err(|e| format!("{e}"))?;
+                    let s = WavStats::from_pcm(&channels, rate);
+                    (s.peak, s.rms)
+                }
+            };
+            out.push(TrackStats {
+                track: t,
+                name: track.name.clone(),
+                peak,
+                rms,
+                clips: track.clips.len(),
+            });
+        }
+        Ok(out)
     }
 
     /// Render a Sound to an audio buffer (offline) and store it as the sample's

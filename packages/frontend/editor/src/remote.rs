@@ -373,6 +373,14 @@ async fn serve_one(id: u64, req: Request) {
             label,
         } => attach_wasm(node, wasm_base64, label).await,
         Request::LoadAudio { node, url, label } => load_audio(node, url, label).await,
+        Request::Query(EditorQuery::ArrangementTrackStats) => {
+            match controller().arrangement_track_stats().await {
+                Ok(stats) => {
+                    Response::Query(Box::new(QueryResult::ArrangementTrackStats(stats)))
+                }
+                Err(e) => Response::Err(e),
+            }
+        }
         Request::Query(q) if is_wav_query(&q) => render_query(q).await,
         req => dispatch(req),
     };

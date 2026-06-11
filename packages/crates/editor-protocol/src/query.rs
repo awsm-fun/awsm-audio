@@ -33,6 +33,9 @@ pub enum EditorQuery {
     },
     /// The active sample's arrangement (if it is one).
     Arrangement,
+    /// Per-track peak/rms of the active arrangement, each rendered in isolation
+    /// (solo) — so an agent can see which stem is hot without rescaling blindly.
+    ArrangementTrackStats,
     /// Live transport state (playing / peak / playhead / audio-context state).
     Transport,
     /// Cheap numeric stats of a Sound's offline render.
@@ -70,6 +73,7 @@ pub enum QueryResult {
     BounceStatus(String),
     RenderPlan(RenderPlanInfo),
     Arrangement(Option<Arrangement>),
+    ArrangementTrackStats(Vec<TrackStats>),
     Transport(TransportInfo),
     WavStats(WavStats),
     Waveform(WaveformEnvelope),
@@ -174,6 +178,21 @@ pub struct RenderPlanInfo {
     /// Plain-language explanation of how `duration_secs` was derived, and how to
     /// override it (`duration_secs` on bounce/render_wav).
     pub reason: String,
+}
+
+/// Peak/rms of one arrangement track, rendered in isolation — the per-stem mix
+/// readback behind `arrangement_track_stats`.
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrackStats {
+    pub track: usize,
+    pub name: String,
+    /// Peak absolute sample of this track alone (>1.0 = it clips on its own).
+    pub peak: f32,
+    /// RMS level of this track alone.
+    pub rms: f32,
+    /// How many clips are on the track.
+    pub clips: usize,
 }
 
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]

@@ -183,13 +183,23 @@ pub struct QueryParams {
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct MarkersParams {
-    /// Loop/export start marker (seconds). Omit BOTH start and end to clear the
+    /// Loop/export start marker (seconds). Omit ALL marker fields to clear the
     /// markers (loop + export span the whole timeline).
     #[serde(default)]
     pub start: Option<f64>,
     /// Loop/export end marker (seconds). Must be > start to take effect.
     #[serde(default)]
     pub end: Option<f64>,
+    /// Start marker in bars (converted with the arrangement BPM); alternative to
+    /// `start`.
+    #[serde(default)]
+    pub start_bars: Option<f64>,
+    /// End marker in bars; alternative to `end`.
+    #[serde(default)]
+    pub end_bars: Option<f64>,
+    /// Beats per bar for the bar forms. Defaults to 4.
+    #[serde(default)]
+    pub beats_per_bar: Option<f64>,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -250,11 +260,51 @@ pub struct RenameSampleParams {
 pub struct AddClipParams {
     /// Track index (0-based) in the active arrangement.
     pub track: usize,
-    /// Clip start on the timeline, in seconds (use `beats_to_secs` for beat math).
-    pub start: f64,
+    /// Clip start on the timeline, in seconds. Give exactly one of `start`,
+    /// `start_beats`, or `start_bars` (the beat/bar forms use the arrangement's
+    /// BPM, so no hand-conversion / float drift).
+    #[serde(default)]
+    pub start: Option<f64>,
+    /// Clip start in beats (converted with the active arrangement's BPM).
+    #[serde(default)]
+    pub start_beats: Option<f64>,
+    /// Clip start in bars (converted with the BPM × `beats_per_bar`).
+    #[serde(default)]
+    pub start_bars: Option<f64>,
+    /// Beats per bar for `start_bars`. Defaults to 4.
+    #[serde(default)]
+    pub beats_per_bar: Option<f64>,
     /// Bounced Sound to place (from `list_assets`/`list_samples`). Must be bounced.
     pub source: SampleId,
     /// Timeline length in seconds; omit to use the full bounce duration.
+    #[serde(default)]
+    pub length: Option<f64>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct AddClipsParams {
+    /// Track index (0-based) in the active arrangement.
+    pub track: usize,
+    /// Bounced Sound to place at every position (must be bounced).
+    pub source: SampleId,
+    /// Explicit start positions in seconds.
+    #[serde(default)]
+    pub starts: Option<Vec<f64>>,
+    /// Or start positions in beats (converted with the arrangement BPM).
+    #[serde(default)]
+    pub starts_beats: Option<Vec<f64>>,
+    /// Or start positions in bars (converted with BPM × `beats_per_bar`).
+    #[serde(default)]
+    pub starts_bars: Option<Vec<f64>>,
+    /// Or a bar-range section string like `"3-12, 15-20"` — each range expands to
+    /// one clip per bar over `[start, end)` (end-exclusive), i.e. a 1-bar loop
+    /// tiled across the section. Bar units, using the arrangement BPM.
+    #[serde(default)]
+    pub sections: Option<String>,
+    /// Beats per bar for the bar forms. Defaults to 4.
+    #[serde(default)]
+    pub beats_per_bar: Option<f64>,
+    /// Per-clip timeline length in seconds; omit to use the full bounce duration.
     #[serde(default)]
     pub length: Option<f64>,
 }
@@ -731,11 +781,17 @@ impl EditorMcp {
         &self,
         Parameters(p): Parameters<MarkersParams>,
     ) -> Result<CallToolResult, McpError> {
+        // Resolve bar forms to seconds (querying BPM only if a bar form is used).
+        let needs_bpm = p.start_bars.is_some() || p.end_bars.is_some();
+        let secs_per_bar = if needs_bpm {
+            p.beats_per_bar.unwrap_or(4.0) * 60.0 / self.arrangement_bpm().await?
+        } else {
+            0.0
+        };
+        let start = p.start.or(p.start_bars.map(|b| b * secs_per_bar));
+        let end = p.end.or(p.end_bars.map(|b| b * secs_per_bar));
         self.dispatch(EditorCommand::EditArrange {
-            op: ArrangeOp::SetMarkers {
-                start: p.start,
-                end: p.end,
-            },
+            op: ArrangeOp::SetMarkers { start, end },
         })
         .await
     }
@@ -797,21 +853,87 @@ impl EditorMcp {
     }
 
     #[tool(
-        description = "Place a bounced Sound as a clip on a track at `start` seconds. \
-        `source` must be bounced. `length` defaults to the full bounce duration. Use \
-        beats_to_secs to turn beats/bars into the `start` seconds."
+        description = "Place a bounced Sound as a clip on a track. Give the start \
+        as `start` (seconds), `start_beats`, or `start_bars` — the beat/bar forms \
+        use the arrangement's BPM directly, so no hand-conversion. `source` must be \
+        bounced. `length` defaults to the full bounce duration. For placing the same \
+        loop at many positions, use add_clips."
     )]
     async fn add_clip(
         &self,
         Parameters(p): Parameters<AddClipParams>,
     ) -> Result<CallToolResult, McpError> {
+        let start = self
+            .resolve_start_secs(p.start, p.start_beats, p.start_bars, p.beats_per_bar)
+            .await?;
         self.arrange(ArrangeOp::AddClip {
             track: p.track,
-            start: p.start,
+            start,
             source: p.source,
             length: p.length,
         })
         .await
+    }
+
+    #[tool(
+        description = "Place a bounced Sound on a track at MANY positions in one \
+        call — the section-builder for arrangement-first workflows (drums in the \
+        drop, keys out of the breakdown, …). Give positions as `starts` (seconds), \
+        `starts_beats`, `starts_bars`, or a `sections` bar-range string like \
+        \"3-12, 15-20\" (each range tiles a 1-bar loop over [start,end)). Bar/beat \
+        forms use the arrangement BPM. One undo. `length` defaults to the full \
+        bounce duration per clip."
+    )]
+    async fn add_clips(
+        &self,
+        Parameters(p): Parameters<AddClipsParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let bpb = p.beats_per_bar.unwrap_or(4.0);
+        // Collect start positions (seconds) from whichever form was given.
+        let mut starts: Vec<f64> = Vec::new();
+        if let Some(s) = &p.starts {
+            starts.extend(s.iter().copied());
+        }
+        if p.starts_beats.is_some() || p.starts_bars.is_some() || p.sections.is_some() {
+            let bpm = self.arrangement_bpm().await?;
+            let per_beat = 60.0 / bpm;
+            if let Some(b) = &p.starts_beats {
+                starts.extend(b.iter().map(|x| x * per_beat));
+            }
+            if let Some(b) = &p.starts_bars {
+                starts.extend(b.iter().map(|x| x * bpb * per_beat));
+            }
+            if let Some(spec) = &p.sections {
+                for bar in parse_sections(spec)? {
+                    starts.push(bar * bpb * per_beat);
+                }
+            }
+        }
+        if starts.is_empty() {
+            return Err(McpError::invalid_params(
+                "no positions — give starts / starts_beats / starts_bars / sections",
+                None,
+            ));
+        }
+        let n = starts.len();
+        let cmds: Vec<EditorCommand> = starts
+            .into_iter()
+            .map(|start| EditorCommand::EditArrange {
+                op: ArrangeOp::AddClip {
+                    track: p.track,
+                    start,
+                    source: p.source,
+                    length: p.length,
+                },
+            })
+            .collect();
+        match self.req(Request::DispatchBatch(cmds)).await? {
+            Response::Batch(_) | Response::Ok => {
+                Ok(text(format!("placed {n} clip(s) on track {}", p.track)))
+            }
+            Response::Err(e) => Err(McpError::internal_error(e, None)),
+            other => Err(unexpected(other)),
+        }
     }
 
     #[tool(
@@ -1024,6 +1146,18 @@ impl EditorMcp {
             Response::Err(e) => Err(McpError::internal_error(e, None)),
             other => Err(unexpected(other)),
         }
+    }
+
+    #[tool(
+        description = "Per-track peak/rms of the active arrangement, each track \
+        rendered SOLO (in isolation) over the effective window — so you can see \
+        which stem is hot and fix that one track's gain instead of rescaling \
+        everything. Returns `[{track, name, peak, rms, clips}]` (peak > 1.0 means \
+        that stem clips on its own). Pair with the master render's wav_stats to \
+        balance a mix."
+    )]
+    async fn arrangement_track_stats(&self) -> Result<CallToolResult, McpError> {
+        self.query(EditorQuery::ArrangementTrackStats).await
     }
 
     #[tool(
@@ -1337,6 +1471,46 @@ impl EditorMcp {
     /// Dispatch an [`ArrangeOp`] against the active Arrangement sample.
     async fn arrange(&self, op: ArrangeOp) -> Result<CallToolResult, McpError> {
         self.dispatch(EditorCommand::EditArrange { op }).await
+    }
+
+    /// The active arrangement's BPM (for beat/bar → seconds conversion). Errors if
+    /// the active sample isn't an arrangement.
+    async fn arrangement_bpm(&self) -> Result<f64, McpError> {
+        match self.query_result(EditorQuery::Arrangement).await? {
+            QueryResult::Arrangement(Some(a)) if a.bpm > 0.0 => Ok(a.bpm),
+            QueryResult::Arrangement(Some(_)) => {
+                Err(McpError::internal_error("arrangement BPM is not positive", None))
+            }
+            QueryResult::Arrangement(None) => Err(McpError::invalid_params(
+                "active sample is not an arrangement — set_active_sample to one first",
+                None,
+            )),
+            other => Err(unexpected_query(other)),
+        }
+    }
+
+    /// Resolve a clip start given in seconds / beats / bars to seconds, querying
+    /// the arrangement BPM only when a beat/bar form is used. Exactly one form may
+    /// be set; none defaults to 0 (timeline start).
+    async fn resolve_start_secs(
+        &self,
+        start: Option<f64>,
+        beats: Option<f64>,
+        bars: Option<f64>,
+        beats_per_bar: Option<f64>,
+    ) -> Result<f64, McpError> {
+        match (start, beats, bars) {
+            (Some(s), None, None) => Ok(s),
+            (None, None, None) => Ok(0.0),
+            (None, Some(b), None) => Ok(b * 60.0 / self.arrangement_bpm().await?),
+            (None, None, Some(bar)) => {
+                Ok(bar * beats_per_bar.unwrap_or(4.0) * 60.0 / self.arrangement_bpm().await?)
+            }
+            _ => Err(McpError::invalid_params(
+                "give exactly one of start / start_beats / start_bars",
+                None,
+            )),
+        }
     }
 
     /// Run a query and hand back the typed [`QueryResult`] (for tools that compose
@@ -1885,6 +2059,43 @@ fn content_type_for(path: &str) -> String {
 
 fn unexpected(resp: Response) -> McpError {
     McpError::internal_error(format!("unexpected response: {resp:?}"), None)
+}
+
+/// Parse a bar-range section spec like `"3-12, 15-20"` into per-bar start
+/// offsets (bar units, end-exclusive): `[3,4,…,11, 15,16,…,19]`. A bare `"5"`
+/// yields `[5]`. Powers `add_clips`'s `sections`.
+fn parse_sections(spec: &str) -> Result<Vec<f64>, McpError> {
+    let bad = |m: String| McpError::invalid_params(m, None);
+    let mut out = Vec::new();
+    for part in spec.split(',') {
+        let part = part.trim();
+        if part.is_empty() {
+            continue;
+        }
+        if let Some((a, b)) = part.split_once('-') {
+            let a: i64 = a
+                .trim()
+                .parse()
+                .map_err(|_| bad(format!("bad section start in '{part}'")))?;
+            let b: i64 = b
+                .trim()
+                .parse()
+                .map_err(|_| bad(format!("bad section end in '{part}'")))?;
+            if b <= a {
+                return Err(bad(format!("section '{part}': end must be > start")));
+            }
+            out.extend((a..b).map(|bar| bar as f64));
+        } else {
+            let a: i64 = part
+                .parse()
+                .map_err(|_| bad(format!("bad section bar '{part}'")))?;
+            out.push(a as f64);
+        }
+    }
+    if out.is_empty() {
+        return Err(bad("sections string has no bars".into()));
+    }
+    Ok(out)
 }
 
 /// Parse a uuid string into a [`NodeId`] (for wiring returned chain ids).
