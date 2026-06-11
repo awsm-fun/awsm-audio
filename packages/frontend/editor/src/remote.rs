@@ -498,18 +498,31 @@ async fn upload_render(render_id: &str, wav: Vec<u8>) -> Result<(), String> {
 /// Offline-render a Sound and compute the numeric `WavStats` / `Waveform`
 /// readback (the analog of the renderer's pixel readbacks).
 async fn render_query(q: EditorQuery) -> Response {
-    let (sample, want_waveform, buckets) = match &q {
-        EditorQuery::WavStats { sample } => (*sample, false, 0),
-        EditorQuery::Waveform { sample, buckets } => (*sample, true, *buckets),
+    let (sample, want_waveform, buckets, duration_secs) = match &q {
+        EditorQuery::WavStats {
+            sample,
+            duration_secs,
+        } => (*sample, false, 0, *duration_secs),
+        EditorQuery::Waveform {
+            sample,
+            buckets,
+            duration_secs,
+        } => (*sample, true, *buckets, *duration_secs),
         _ => unreachable!("render_query only handles the WAV queries"),
     };
     let ctrl = controller();
-    match ctrl.render_pcm(sample, None, None).await {
-        Ok((channels, rate)) => {
+    // Stored clean bounce vs fresh render of the live graph (see `readback_pcm`);
+    // the `source` tag is stamped onto the result so the caller knows which.
+    match ctrl.readback_pcm(sample, duration_secs).await {
+        Ok((channels, rate, source)) => {
             let qr = if want_waveform {
-                QueryResult::Waveform(WaveformEnvelope::from_pcm(&channels, rate, buckets))
+                let mut w = WaveformEnvelope::from_pcm(&channels, rate, buckets);
+                w.source = Some(source.to_string());
+                QueryResult::Waveform(w)
             } else {
-                QueryResult::WavStats(WavStats::from_pcm(&channels, rate))
+                let mut s = WavStats::from_pcm(&channels, rate);
+                s.source = Some(source.to_string());
+                QueryResult::WavStats(s)
             };
             Response::Query(Box::new(qr))
         }

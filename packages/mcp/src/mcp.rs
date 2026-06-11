@@ -96,12 +96,30 @@ pub struct RenderWavParams {
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct WavStatsParams {
+    /// Sound to inspect. Omit to use the project root.
+    #[serde(default)]
+    pub sample: Option<SampleId>,
+    /// Force a fresh render of the live graph over this many seconds (instead of
+    /// reporting the stored bounce). Use it to see the sound's full shape — e.g. a
+    /// long release tail a short bounce would clip. Omit to report the stored
+    /// clean bounce when there is one.
+    #[serde(default)]
+    pub duration_secs: Option<f64>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct WaveformParams {
     /// Sound to render. Omit to render the project root.
     #[serde(default)]
     pub sample: Option<SampleId>,
     /// Number of min/max buckets (envelope columns) to return.
     pub buckets: u32,
+    /// Force a fresh render of the live graph over this many seconds (vs the stored
+    /// bounce) — to inspect the sound's full shape. Omit to use the stored clean
+    /// bounce when present.
+    #[serde(default)]
+    pub duration_secs: Option<f64>,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -556,22 +574,32 @@ impl EditorMcp {
         self.wav(req).await
     }
 
-    #[tool(description = "Cheap numeric stats of a Sound's offline render: \
-        duration_secs, peak, rms, channels, sample_rate. Always a FRESH offline \
-        render of the current graph (never the stored `bounce`), so it reflects \
-        un-bounced edits. Omit `sample` for the root.")]
+    #[tool(description = "Numeric stats of a Sound: duration_secs, peak, rms, \
+        channels, sample_rate, plus `source`. By default reports the stored CLEAN \
+        bounce (source:\"stored_bounce\" — the asset that plays in an arrangement); \
+        if the graph changed since (dirty) or was never bounced, it FRESH-renders \
+        the live graph (source:\"fresh_render\"). Pass `duration_secs` to force a \
+        fresh render over a chosen window — e.g. to measure a release tail a short \
+        bounce would clip. Omit `sample` for the root.")]
     async fn wav_stats(
         &self,
-        Parameters(p): Parameters<SampleArg>,
+        Parameters(p): Parameters<WavStatsParams>,
     ) -> Result<CallToolResult, McpError> {
-        self.query(EditorQuery::WavStats { sample: p.sample }).await
+        self.query(EditorQuery::WavStats {
+            sample: p.sample,
+            duration_secs: p.duration_secs,
+        })
+        .await
     }
 
     #[tool(
         description = "A downsampled min/max envelope (`buckets` columns) of a \
-        Sound's render, so you can reason about the waveform shape in text. Always \
-        a FRESH offline render of the current graph (never the stored `bounce`). \
-        Omit `sample` for the root."
+        Sound's render, so you can reason about the waveform shape in text. Same \
+        source rule as wav_stats: the stored CLEAN bounce by default \
+        (source:\"stored_bounce\"), else a fresh render of the live graph. Pass \
+        `duration_secs` to force a fresh render over a chosen window — use this to \
+        see the live sound's FULL shape (e.g. a tail a short bounce truncates) \
+        rather than the bounced asset. Omit `sample` for the root."
     )]
     async fn waveform(
         &self,
@@ -580,6 +608,7 @@ impl EditorMcp {
         self.query(EditorQuery::Waveform {
             sample: p.sample,
             buckets: p.buckets,
+            duration_secs: p.duration_secs,
         })
         .await
     }

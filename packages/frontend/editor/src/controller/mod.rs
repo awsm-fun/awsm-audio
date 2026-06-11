@@ -3353,6 +3353,56 @@ impl EditorController {
     /// (`RenderWav`/`WavStats`/`Waveform`). Reuses [`bounce_job_for`] +
     /// [`awsm_audio_player::bounce::render`], the same path Bounce/export use; an
     /// optional `sample_rate` overrides the bounce rate.
+    /// PCM for a stats / waveform readback, plus where it came from. With no
+    /// `duration_secs` override and a **clean** stored bounce, returns that
+    /// bounce's PCM (`"stored_bounce"`) — the asset that actually plays in an
+    /// arrangement. Otherwise (an explicit `duration_secs`, or a dirty / absent
+    /// bounce — e.g. mid sound-design after an edit) a fresh offline render
+    /// (`"fresh_render"`) of the live graph. The `source` tag lets a caller tell
+    /// the two apart, and `duration_secs` is the escape hatch to force a
+    /// full-length fresh render of the live sound.
+    pub async fn readback_pcm(
+        &self,
+        sample: Option<awsm_audio_schema::SampleId>,
+        duration_secs: Option<f64>,
+    ) -> Result<(Vec<Vec<f32>>, u32, &'static str), String> {
+        let id = sample.unwrap_or_else(|| *self.root.borrow());
+        if duration_secs.is_none() && self.bounce_status(id) == BounceStatus::Clean {
+            if let Some((channels, rate)) = self.stored_bounce_pcm(id) {
+                return Ok((channels, rate, "stored_bounce"));
+            }
+        }
+        let (channels, rate) = self.render_pcm(sample, None, duration_secs).await?;
+        Ok((channels, rate, "fresh_render"))
+    }
+
+    /// The decoded PCM of a Sound's stored bounce, if it has one backed by inline
+    /// PCM (the normal case for a bounce). `None` for an un-bounced sample or a
+    /// non-PCM asset source.
+    fn stored_bounce_pcm(
+        &self,
+        id: awsm_audio_schema::SampleId,
+    ) -> Option<(Vec<Vec<f32>>, u32)> {
+        let asset_id = {
+            let samples = self.samples.borrow();
+            samples
+                .iter()
+                .find(|s| s.sample.id == id)?
+                .sample
+                .bounce
+                .as_ref()?
+                .asset
+        };
+        let assets = self.buffer_assets.borrow();
+        match &assets.get(&asset_id)?.source {
+            awsm_audio_schema::AudioSource::Pcm {
+                sample_rate,
+                channels,
+            } => Some((channels.clone(), *sample_rate as u32)),
+            _ => None,
+        }
+    }
+
     pub async fn render_pcm(
         &self,
         sample: Option<awsm_audio_schema::SampleId>,

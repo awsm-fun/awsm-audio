@@ -38,17 +38,25 @@ pub enum EditorQuery {
     ArrangementTrackStats,
     /// Live transport state (playing / peak / playhead / audio-context state).
     Transport,
-    /// Cheap numeric stats of a Sound's offline render.
+    /// Cheap numeric stats of a Sound's render. With no `duration_secs` and a
+    /// clean stored bounce, reports that bounce's stats (the asset that plays);
+    /// otherwise a fresh render. `duration_secs` always forces a fresh render of
+    /// that span (the live graph).
     WavStats {
         #[serde(default)]
         sample: Option<SampleId>,
+        #[serde(default)]
+        duration_secs: Option<f64>,
     },
-    /// A downsampled min/max envelope (`buckets` columns) of a Sound's render,
-    /// so an agent can reason about the waveform shape in text.
+    /// A downsampled min/max envelope (`buckets` columns) of a Sound's render, so
+    /// an agent can reason about the waveform shape in text. Same stored-bounce vs
+    /// fresh-render rule as [`WavStats`](Self::WavStats).
     Waveform {
         #[serde(default)]
         sample: Option<SampleId>,
         buckets: u32,
+        #[serde(default)]
+        duration_secs: Option<f64>,
     },
     /// The palette catalog: every creatable node kind with a ready-to-use default
     /// value and its editable field keys — so `add_node` / `set_field` need no
@@ -213,6 +221,11 @@ pub struct WavStats {
     pub rms: f32,
     pub channels: u32,
     pub sample_rate: u32,
+    /// Where these numbers came from: `"stored_bounce"` (the bounced asset that
+    /// plays in an arrangement) or `"fresh_render"` (a just-rendered window of the
+    /// live graph). `None` until the readback layer stamps it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
 }
 
 impl WavStats {
@@ -247,6 +260,7 @@ impl WavStats {
             rms,
             channels: channels.len() as u32,
             sample_rate,
+            source: None,
         }
     }
 }
@@ -260,6 +274,9 @@ pub struct WaveformEnvelope {
     /// `min[i] <= max[i]`, one pair per bucket, left-to-right in time.
     pub min: Vec<f32>,
     pub max: Vec<f32>,
+    /// `"stored_bounce"` or `"fresh_render"` — see [`WavStats::source`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
 }
 
 impl WaveformEnvelope {
@@ -310,6 +327,7 @@ impl WaveformEnvelope {
             duration_secs,
             min,
             max,
+            source: None,
         }
     }
 }
