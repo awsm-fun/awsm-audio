@@ -1712,8 +1712,14 @@ impl ServerHandler for EditorMcp {
              and place clips into sections (intro / drop / switch / outro) — \
              add_arrangement_track + add_clip, with beats_to_secs / duplicate_clips for \
              the timing. Check wav_stats / waveform after every major bounce (they catch \
-             a too-short render, a hot/clipping bounce, overlapping clips). See the \
-             awsm-audio://docs/genres resource for per-genre checklists."
+             a too-short render, a hot/clipping bounce, overlapping clips). \
+             add_chain builds a linear node patch in one call; dispatch_refs wires \
+             a non-linear graph in one call with $ref ids; get_render_plan explains \
+             how long a bounce will run; add_clips places a loop across many bars; \
+             arrangement_track_stats shows which stem is hot. See the \
+             awsm-audio://docs/instruments resource for the instrument/voice mental \
+             model (anatomy, a worked kick, velocity, render duration) and \
+             awsm-audio://docs/genres for per-genre checklists."
                 .to_string(),
         );
         info
@@ -1787,6 +1793,14 @@ impl ServerHandler for EditorMcp {
                 "Arrangement-first workflow + short per-genre style checklists \
                  (drums, bass, harmony, FX, sectioning) for common electronic genres.",
             ),
+            res(
+                "awsm-audio://docs/instruments",
+                "Instrument anatomy & rendering model",
+                "The core mental model: instrument = graph with an outlet boundary; \
+                 a sequencer trigger spawns a voice; AudioParam automation runs in \
+                 seconds from note-on. Worked kick example, velocity scaling, the \
+                 bounce auto-duration algorithm, and feedback-loop renderability.",
+            ),
         ]))
     }
 
@@ -1799,6 +1813,7 @@ impl ServerHandler for EditorMcp {
             "awsm-audio://docs/vocabulary" => VOCABULARY_DOC,
             "awsm-audio://docs/worklet-abi" => WORKLET_ABI_DOC,
             "awsm-audio://docs/genres" => GENRES_DOC,
+            "awsm-audio://docs/instruments" => INSTRUMENTS_DOC,
             other => {
                 return Err(McpError::resource_not_found(
                     format!("unknown resource {other}"),
@@ -2149,9 +2164,99 @@ Don't build one giant root sequencer. Build *parts*, bounce them, arrange them:
 - Sectioned arrangement: intro (filtered/sparse) → drop (full break+sub) →
   switch (re-chop / bass change) → outro.
 
+### Boom-bap / lo-fi hip-hop (~85–95 BPM)
+- Punchy but loose drums: a fat kick + a cracky snare on 2 and 4, swung closed
+  hats. Slight timing/velocity variation (not a rigid grid) gives the head-nod.
+- Sampled-feel chords: a jazzy electric-piano / vinyl-ish stab (filter off the
+  highs, a touch of noise for texture), often a 2–4 bar loop.
+- Walking or simple sub bass following the chord roots.
+- One-shot accents: vinyl crackle bed (noise → filter, low gain), the odd vocal
+  chop / horn stab.
+- Sectioned arrangement: intro (drums + crackle) → main (full) → break (drop drums,
+  keep keys) → out. Keep it a touch dirty — gentle saturation, not pristine.
+
 (Other genres follow the same shape — swap the parts: e.g. house = four-on-the-floor
 kick, offbeat hats, bass, chord stabs, vocal/FX; techno = driving kick, rumble bass,
 percussion layers, atmospheric FX. Build each as a loop, bounce, arrange.)
+
+See the awsm-audio://docs/instruments resource for how to build each drum/voice
+(anatomy, a worked kick, velocity scaling) and how long bounces run.
+"#;
+
+/// The instrument-anatomy + rendering-model guide served as
+/// `awsm-audio://docs/instruments`. The mental model an agent otherwise has to
+/// infer from scattered field docs: what an instrument *is*, how a trigger spawns
+/// a voice, how envelopes are timed, how long a bounce runs, and which graphs are
+/// renderable offline.
+const INSTRUMENTS_DOC: &str = r#"# Instruments & the rendering model
+
+## What an instrument is
+
+An **instrument** is just a Sound (a node graph) with an **outlet boundary** node
+(`add_boundary` → outlet). The outlet is the voice's audio out. When a Note
+Sequencer triggers the instrument (via a Sample-ref + `bind`), the editor **spawns
+one voice per note**: it instantiates the graph, plays its sources at the note's
+pitch for the note's length, and routes the outlet to the mix.
+
+- A Sound with **no** outlet boundary just auditions its loose ends to master — fine
+  for sound-design, but to be *played by a sequencer* it needs the outlet.
+- The trigger sets the voice's pitch (from the note number) and gate length (from
+  the note's length). Sources that respond to pitch (oscillator frequency) track
+  the note; others (noise, samples) just start/stop.
+
+## Envelope timing (AudioParam automation)
+
+A node's AudioParam automation (set via `set_automation` / the inspector) runs in
+**seconds relative to note-on** (voice start), not absolute timeline seconds. So an
+amp envelope of `[{t:0, v:0}, {t:0.005, v:1}, {t:0.2, v:0}]` is a 5 ms attack →
+200 ms decay *from each note's start*. This is what makes one authored envelope work
+for every note a sequencer fires.
+
+## Velocity scaling
+
+A note's `velocity` (0–127) scales the voice amplitude roughly **linearly as
+v/127** — so `velocity: 1` is ~ −42 dB, essentially silent. Velocity is *not* a
+boolean "on" flag: for an audible hit use 90–120; reserve low velocities for genuine
+dynamics. (If you wired a crackle/one-shot and "nothing plays", check velocity.)
+
+## Worked example: a kick drum
+
+A short pitched sine blip with a fast pitch drop and amp decay:
+
+1. `add_chain ["oscillator", "gain"]` → ids `[osc, amp]` (osc → amp).
+2. `add_boundary` outlet; `connect amp → outlet`.
+3. Pitch drop: `set_automation` on `osc.frequency` =
+   `[{t:0, v:150}, {t:0.06, v:45}]` (150 Hz → 45 Hz over 60 ms).
+4. Amp decay: `set_automation` on `amp.gain` =
+   `[{t:0, v:1}, {t:0.18, v:0}]` (instant attack → 180 ms decay).
+5. Drive it from a drum `note_sequencer` (note 36) bound to a Sample-ref of this
+   Sound; or `bounce` with `duration_secs: 0.3` to audition the one-shot.
+
+A snare = noise burst → bandpass → fast amp decay; a hat = noise → highpass → very
+fast decay. Same anatomy, different source/filter.
+
+## How long a bounce renders (auto-duration)
+
+`bounce` / `render_wav` pick a length automatically — call **`get_render_plan`** to
+see it (and why) before rendering:
+
+- **Sequencer-driven Sound** (a sequencer is wired into the audible path): renders
+  the **song-loop length** + a 3 s release tail (so note tails fold cleanly onto the
+  loop). A silent/unbound sequencer doesn't count — it's treated as a plain graph.
+- **Continuous / one-shot graph** (no sequencer audible): renders a fixed **6 s**
+  default window.
+- **Override anytime** with `duration_secs` on `bounce` / `render_wav` — the right
+  tool for a procedural source (noise, a worklet) with no note to bound it.
+
+## Offline renderability
+
+- **DelayNode feedback loops** (`delay → gain → delay`) render fine offline — the
+  delay breaks the cycle, so a feedback echo/reverb is fully bounceable.
+- **Custom-wave oscillators** (`type: custom` + `harmonics`) render via a
+  PeriodicWave — supported.
+- **Live sources can't render offline**: a mic (`media_stream_source`) or media
+  element (`media_element_source`) makes a Sound unbounceable; `get_render_plan`
+  reports this. Replace them with an `audio_buffer_source` + `load_audio` to bounce.
 "#;
 
 fn text(s: impl Into<String>) -> CallToolResult {
