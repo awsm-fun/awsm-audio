@@ -27,7 +27,8 @@ pub use query::{
 };
 pub use snapshot::{EditorProject, EditorSnapshot, NodeLayout};
 pub use transport::{
-    AudioInfo, EditorEvent, RenderHandle, Request, Response, WsClientMsg, WsServerMsg,
+    AudioInfo, BatchItemResult, EditorEvent, RenderHandle, Request, Response, WsClientMsg,
+    WsServerMsg,
 };
 
 #[cfg(test)]

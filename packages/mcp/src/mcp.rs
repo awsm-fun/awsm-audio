@@ -476,7 +476,10 @@ impl EditorMcp {
     #[tool(
         description = "Add a node of `kind` (a typed NodeKind — see the param \
         schema, or copy a kind's `example` from list_node_kinds) at world (x, y). \
-        The editor mints the id; read it back with get_snapshot."
+        Returns the minted node `id` (as `{ok, id}`) — no follow-up get_snapshot \
+        needed to learn it. (add_sample/create_arrangement/add_boundary/ \
+        add_sample_ref via dispatch_command, and every create in dispatch_batch, \
+        return their id the same way.)"
     )]
     async fn add_node(
         &self,
@@ -902,7 +905,7 @@ impl EditorMcp {
             })
             .collect();
         match self.req(Request::DispatchBatch(cmds)).await? {
-            Response::Ok => Ok(text(format!(
+            Response::Batch(_) | Response::Ok => Ok(text(format!(
                 "started bouncing {} sound(s): {}",
                 names.len(),
                 names.join(", ")
@@ -1100,7 +1103,20 @@ impl EditorMcp {
         Parameters(p): Parameters<BatchParams>,
     ) -> Result<CallToolResult, McpError> {
         let cmds: Vec<EditorCommand> = p.commands.into_iter().map(|c| c.0).collect();
+        if cmds.is_empty() {
+            return Err(McpError::invalid_params(
+                "dispatch_batch needs a non-empty `commands` array (e.g. commands: [{cmd, args}])",
+                None,
+            ));
+        }
         match self.req(Request::DispatchBatch(cmds)).await? {
+            // Per-command results, in order: each carries the minted id (for
+            // add_node / add_sample / add_boundary / add_sample_ref) so a
+            // create-then-connect flow needs no follow-up snapshot.
+            Response::Batch(items) => Ok(text(
+                serde_json::to_string(&items)
+                    .unwrap_or_else(|e| format!("{{\"error\":\"{e}\"}}")),
+            )),
             Response::Ok => Ok(text("ok")),
             Response::Err(e) => Err(McpError::internal_error(e, None)),
             other => Err(unexpected(other)),
@@ -1143,6 +1159,11 @@ impl EditorMcp {
     async fn dispatch(&self, cmd: EditorCommand) -> Result<CallToolResult, McpError> {
         match self.req(Request::Dispatch(cmd)).await? {
             Response::Ok => Ok(text("ok")),
+            // A create command echoes its minted id, so the caller needn't
+            // re-snapshot to learn it.
+            Response::Created { id } => Ok(text(
+                serde_json::json!({ "ok": true, "id": id }).to_string(),
+            )),
             Response::Err(e) => Err(McpError::internal_error(e, None)),
             other => Err(unexpected(other)),
         }

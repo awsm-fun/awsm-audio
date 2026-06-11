@@ -178,6 +178,12 @@ pub struct EditorController {
     /// A transient status/error message shown in the transport (e.g. "wire an
     /// Output to play the sequence"). Cleared on the next successful play / stop.
     pub status: Mutable<Option<String>>,
+    /// The id (uuid string) of the document object the most recent [`dispatch`]
+    /// created — a node, sample, boundary, or sample-ref. Cleared at the start of
+    /// every `dispatch` and set in the create arms. The MCP/remote layer reads it
+    /// back via [`take_created_id`](Self::take_created_id) so a create command can
+    /// return the minted id without a follow-up snapshot.
+    created_id: Rc<RefCell<Option<String>>>,
 }
 
 /// A stored sample: its schema data plus per-node canvas layout (node ids are
@@ -310,6 +316,7 @@ impl EditorController {
             samples_rev: Mutable::new(0),
             view: Mutable::new(awsm_audio_schema::SampleKind::Sound),
             status: Mutable::new(None),
+            created_id: Rc::new(RefCell::new(None)),
         };
         // Point active + root at the initial "main" sample.
         let id = ctrl.samples.borrow()[0].sample.id;
@@ -409,6 +416,7 @@ impl EditorController {
             }
         };
         let id = sample.id;
+        self.set_created_id(id);
         self.samples.borrow_mut().push(StoredSample {
             sample,
             layout: Vec::new(),
@@ -480,6 +488,7 @@ impl EditorController {
             }
         };
         let new_id = cloned.sample.id;
+        self.set_created_id(new_id);
         self.samples.borrow_mut().push(cloned);
         self.switch_sample(new_id);
     }
@@ -611,6 +620,7 @@ impl EditorController {
         let name = self.unique_boundary_name(base);
         let node = EditorNode::boundary(NodeId::new(), port, &name, (x, y));
         let id = node.id;
+        self.set_created_id(id);
         self.nodes.lock_mut().push_cloned(node);
         self.set_selection(&[id], false);
     }
@@ -662,6 +672,7 @@ impl EditorController {
             (x, y),
         );
         let id = node.id;
+        self.set_created_id(id);
         self.nodes.lock_mut().push_cloned(node);
         self.set_selection(&[id], false);
     }
@@ -1081,7 +1092,22 @@ impl EditorController {
 
     /// Apply a command. The only way editor state changes. Non-transient
     /// commands snapshot the prior state onto the undo stack first.
+    /// Record the id a create command just minted (see `created_id`).
+    fn set_created_id(&self, id: impl std::fmt::Display) {
+        *self.created_id.borrow_mut() = Some(id.to_string());
+    }
+
+    /// Take (and clear) the id minted by the most recent [`dispatch`], if it
+    /// created a node / sample / boundary / sample-ref. The remote/MCP layer calls
+    /// this right after a `dispatch` to echo the new id back to the agent.
+    pub fn take_created_id(&self) -> Option<String> {
+        self.created_id.borrow_mut().take()
+    }
+
     pub fn dispatch(&self, cmd: EditorCommand) {
+        // Each dispatch reports at most one created id; clear the prior one so a
+        // non-creating command leaves `None` (see `created_id`).
+        self.created_id.borrow_mut().take();
         if !cmd.is_transient() {
             self.push_undo();
         }
@@ -1089,6 +1115,7 @@ impl EditorController {
             EditorCommand::AddNode { kind, x, y } => {
                 let node = EditorNode::new(NodeId::new(), kind, (x, y));
                 let id = node.id;
+                self.set_created_id(id);
                 // A NoteSequencer created with an inline, already-populated `song`
                 // (tracks + note events, e.g. via add_node / dispatch_command) must
                 // have its sound `outputs` derived up front — otherwise they stay
@@ -1124,6 +1151,7 @@ impl EditorController {
                     let (x, y) = src.pos.get();
                     let dup = EditorNode::new(NodeId::new(), kind, (x + 26.0, y + 26.0));
                     let dup_id = dup.id;
+                    self.set_created_id(dup_id);
                     self.nodes.lock_mut().push_cloned(dup);
                     self.set_selection(&[dup_id], false);
                 }

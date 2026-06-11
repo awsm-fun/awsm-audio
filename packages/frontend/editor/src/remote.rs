@@ -32,8 +32,8 @@ use wasm_bindgen_futures::spawn_local;
 
 use awsm_audio_editor_protocol::schema::SampleId;
 use awsm_audio_editor_protocol::{
-    EditorEvent, EditorQuery, QueryResult, RenderHandle, Request, Response, WavStats,
-    WaveformEnvelope, WsClientMsg, WsServerMsg,
+    BatchItemResult, EditorEvent, EditorQuery, QueryResult, RenderHandle, Request, Response,
+    WavStats, WaveformEnvelope, WsClientMsg, WsServerMsg,
 };
 
 use crate::controller::controller;
@@ -397,13 +397,26 @@ fn dispatch(req: Request) -> Response {
     match req {
         Request::Dispatch(cmd) => {
             ctrl.dispatch(cmd);
-            Response::Ok
+            // Echo a minted id (node / sample / boundary / sample-ref) so the
+            // caller doesn't need a follow-up snapshot to learn it.
+            match ctrl.take_created_id() {
+                Some(id) => Response::Created { id },
+                None => Response::Ok,
+            }
         }
         Request::DispatchBatch(cmds) => {
-            for c in cmds {
-                ctrl.dispatch(c);
-            }
-            Response::Ok
+            let items = cmds
+                .into_iter()
+                .map(|c| {
+                    ctrl.dispatch(c);
+                    BatchItemResult {
+                        ok: true,
+                        id: ctrl.take_created_id(),
+                        error: None,
+                    }
+                })
+                .collect();
+            Response::Batch(items)
         }
         Request::Query(q) => Response::Query(Box::new(ctrl.query(q))),
         Request::Play => {
