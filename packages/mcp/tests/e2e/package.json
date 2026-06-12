@@ -1,0 +1,11 @@
+{
+  "name": "awsm-audio-mcp-e2e",
+  "private": true,
+  "description": "Browser e2e for the MCP <-> editor loop: drives real Chrome via playwright-core while a raw streamable-HTTP MCP client exercises the tools.",
+  "scripts": {
+    "e2e": "node e2e.js"
+  },
+  "dependencies": {
+    "playwright-core": "^1.60.0"
+  }
+}
