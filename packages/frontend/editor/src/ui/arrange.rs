@@ -93,6 +93,21 @@ struct DragInfo {
     /// Source Sound to place (Create drag only).
     source: Option<SampleId>,
 }
+
+#[derive(Clone)]
+struct AutomationDrag {
+    track: usize,
+    index: usize,
+}
+
+#[derive(Clone, Copy)]
+struct AutomationPreview {
+    track: usize,
+    index: usize,
+    time: f64,
+    gain: f32,
+}
+
 #[derive(Clone, Copy, PartialEq)]
 enum DragKind {
     Move,
@@ -112,6 +127,8 @@ thread_local! {
     /// The Sound selected in the Assets panel, placed by the Draw tool.
     static SOURCE: Mutable<Option<SampleId>> = Mutable::new(None);
     static DRAG: RefCell<Option<DragInfo>> = const { RefCell::new(None) };
+    static AUTO_DRAG: RefCell<Option<AutomationDrag>> = const { RefCell::new(None) };
+    static AUTO_PREVIEW: Mutable<Option<AutomationPreview>> = Mutable::new(None);
     /// Live preview geometry of the dragged clip: (track, clip, start, len).
     static PREVIEW: Mutable<Option<(usize, usize, f64, f64)>> = Mutable::new(None);
     /// Live preview of a Create (draw) gesture: (track, start, len).
@@ -326,6 +343,88 @@ fn track_at(cy: f64) -> Option<usize> {
     })
 }
 
+fn automation_gain_at(track: usize, cy: f64) -> f32 {
+    LANES.with(|l| {
+        l.borrow()
+            .iter()
+            .find(|(ti, _)| *ti == track)
+            .map(|(_, el)| {
+                let r = el.get_bounding_client_rect();
+                let y = (cy - r.top()).clamp(0.0, r.height());
+                automation_gain_from_y(r.height(), y)
+            })
+            .unwrap_or(1.0)
+    })
+}
+
+fn automation_gain_from_y(h: f64, y: f64) -> f32 {
+    let pad = 8.0;
+    let usable = (h - pad * 2.0).max(1.0);
+    (((1.0 - ((y - pad) / usable).clamp(0.0, 1.0)) * 2.0) as f32).clamp(0.0, 4.0)
+}
+
+fn set_body_cursor(cursor: Option<&str>) {
+    if let Some(body) = web_sys::window()
+        .and_then(|w| w.document())
+        .and_then(|d| d.body())
+    {
+        match cursor {
+            Some(cursor) => {
+                let _ = body.style().set_property("cursor", cursor);
+            }
+            None => {
+                let _ = body.style().remove_property("cursor");
+            }
+        }
+    }
+}
+
+fn clear_marquee_state() {
+    MARQUEE_START.with(|m| m.set(None));
+    MARQUEE.with(|m| m.set(None));
+}
+
+fn clear_automation_preview() {
+    AUTO_PREVIEW.with(|p| p.set(None));
+}
+
+fn prompt_gain_point_edit(
+    track: usize,
+    index: usize,
+    mut points: Vec<awsm_audio_schema::GainPoint>,
+) {
+    let Some(point) = points.get(index).cloned() else {
+        return;
+    };
+    let default = format!("{:.3}, {:.3}", point.time, point.gain);
+    let Some(win) = web_sys::window() else {
+        return;
+    };
+    let Ok(Some(raw)) = win.prompt_with_message_and_default(
+        "Edit track gain keyframe as: time seconds, gain",
+        &default,
+    ) else {
+        return;
+    };
+    let vals: Vec<_> = raw
+        .split(|c: char| c == ',' || c.is_ascii_whitespace())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if vals.len() < 2 {
+        return;
+    }
+    let (Ok(time), Ok(gain)) = (vals[0].parse::<f64>(), vals[1].parse::<f32>()) else {
+        return;
+    };
+    if let Some(slot) = points.get_mut(index) {
+        slot.time = time.max(0.0);
+        slot.gain = gain.clamp(0.0, 4.0);
+    }
+    controller().dispatch(EditorCommand::EditArrange {
+        op: ArrangeOp::SetTrackGainPoints { track, points },
+    });
+}
+
 pub fn render() -> Dom {
     html!("div", {
         .style("display", "flex")
@@ -514,6 +613,21 @@ fn timeline(arr: &Arrangement, total: f64) -> Dom {
         // Move/resize/trim/draw + scrub track on the container (so a drag can
         // cross lanes). Asset-drag ghost movement is handled globally below.
         .global_event(move |e: events::PointerMove| {
+            if let Some((track, index)) = AUTO_DRAG.with(|c| {
+                c.borrow().as_ref().map(|d| (d.track, d.index))
+            }) {
+                set_body_cursor(Some("move"));
+                clear_marquee_state();
+                AUTO_PREVIEW.with(|p| {
+                    p.set(Some(AutomationPreview {
+                        track,
+                        index,
+                        time: snap_secs(secs_at(e.x()), bpm).max(0.0),
+                        gain: automation_gain_at(track, e.y()),
+                    }));
+                });
+                return;
+            }
             // Marquee: promote a pending anchor to an active box once the pointer
             // moves past a small threshold (so a click never box-selects).
             if let Some((x0, y0)) = MARQUEE_START.with(|m| m.get()) {
@@ -585,6 +699,29 @@ fn timeline(arr: &Arrangement, total: f64) -> Dom {
         })
         .global_event(move |e: events::PointerUp| {
             SCRUB.with(|s| s.set(false));
+            if let Some(d) = AUTO_DRAG.with(|c| c.borrow_mut().take()) {
+                set_body_cursor(None);
+                clear_marquee_state();
+                let preview = AUTO_PREVIEW.with(|p| { let v = p.get(); p.set(None); v });
+                let (time, gain) = preview
+                    .filter(|p| p.track == d.track && p.index == d.index)
+                    .map(|p| (p.time, p.gain))
+                    .unwrap_or_else(|| {
+                        (
+                            snap_secs(secs_at(e.x()), bpm).max(0.0),
+                            automation_gain_at(d.track, e.y()),
+                        )
+                    });
+                controller().dispatch(EditorCommand::EditArrange {
+                    op: ArrangeOp::MoveTrackGainPoint {
+                        track: d.track,
+                        index: d.index,
+                        time,
+                        gain,
+                    },
+                });
+                return;
+            }
             // Finish a marquee. If it never became active (no drag), it was a
             // click on empty space: clear the selection + move the playhead.
             if let Some((x0, _)) = MARQUEE_START.with(|m| { let v = m.get(); m.set(None); v }) {
@@ -664,6 +801,13 @@ fn timeline(arr: &Arrangement, total: f64) -> Dom {
                 DragKind::Create => unreachable!(),
             };
             controller().dispatch(EditorCommand::EditArrange { op });
+        })
+        .global_event(move |_: events::PointerCancel| {
+            if AUTO_DRAG.with(|c| c.borrow_mut().take()).is_some() {
+                set_body_cursor(None);
+                clear_marquee_state();
+                clear_automation_preview();
+            }
         })
     })
 }
@@ -1134,7 +1278,7 @@ fn track_row(arr: &Arrangement, ti: usize, total: f64) -> Dom {
         .style("background", "var(--bg-1)")
         .style("border-bottom", "1px solid var(--line)")
         .child(track_header(arr, ti))
-        .child(lane(ti, total, hue, mute, &track.clips))
+        .child(lane(ti, total, hue, mute, track))
     })
 }
 
@@ -1144,6 +1288,7 @@ fn track_header(arr: &Arrangement, ti: usize) -> Dom {
     let mute = track.mute;
     let solo = track.solo;
     let gain = track.gain;
+    let auto_points = track.gain_automation.len();
     html!("div", {
         .style("flex", "0 0 auto").style("width", &format!("{HDR_W}px")).style("box-sizing", "border-box")
         .style("position", "sticky").style("left", "0").style("z-index", "2")
@@ -1214,10 +1359,51 @@ fn track_header(arr: &Arrangement, ti: usize) -> Dom {
                 })
             }))
         }))
+        .child(html!("div", {
+            .style("display", "flex").style("gap", "4px").style("align-items", "center")
+            .child(html!("button", {
+                .style("padding", "1px 6px").style("cursor", "pointer").style("border-radius", "4px").style("font-size", "10.5px").style("color", "inherit")
+                .style("border", "1px solid var(--line)")
+                .style("background", if auto_points > 0 { "oklch(0.32 0.08 90)" } else { "var(--bg-2)" })
+                .attr("title", "Add a track gain automation point at the playhead")
+                .text("auto +")
+                .event(move |e: events::Click| {
+                    e.stop_propagation();
+                    let c = controller();
+                    let time = c.arrange_start_secs();
+                    let gain = c.arrangement_view()
+                        .and_then(|a| a.tracks.get(ti).map(|t| t.gain_at(time)))
+                        .unwrap_or(1.0);
+                    c.dispatch(EditorCommand::EditArrange {
+                        op: ArrangeOp::AddTrackGainPoint {
+                            track: ti,
+                            point: awsm_audio_schema::GainPoint { time, gain },
+                        },
+                    });
+                })
+            }))
+            .child(html!("button", {
+                .style("padding", "1px 6px").style("cursor", "pointer").style("border-radius", "4px").style("font-size", "10.5px").style("color", "inherit")
+                .style("border", "1px solid var(--line)")
+                .style("background", "var(--bg-2)")
+                .style("opacity", if auto_points > 0 { "1" } else { "0.45" })
+                .attr("title", "Clear this track's gain automation points")
+                .text(&format!("clear {auto_points}"))
+                .event(move |e: events::Click| {
+                    e.stop_propagation();
+                    if auto_points > 0 {
+                        controller().dispatch(EditorCommand::EditArrange {
+                            op: ArrangeOp::ClearTrackGainAutomation { track: ti },
+                        });
+                    }
+                })
+            }))
+        }))
     })
 }
 
-fn lane(ti: usize, total: f64, hue: f64, mute: bool, clips: &[awsm_audio_schema::Clip]) -> Dom {
+fn lane(ti: usize, total: f64, hue: f64, mute: bool, track: &awsm_audio_schema::ArrTrack) -> Dom {
+    let clips = &track.clips;
     let clips_owned: Vec<awsm_audio_schema::Clip> = clips.to_vec();
     let bpm = controller()
         .arrangement_view()
@@ -1240,6 +1426,7 @@ fn lane(ti: usize, total: f64, hue: f64, mute: bool, clips: &[awsm_audio_schema:
         .style_unchecked("background", &grid)
         .after_inserted(move |el| { LANES.with(|l| l.borrow_mut().push((ti, el.unchecked_into()))); })
         .children(clips.iter().enumerate().map(move |(ci, clip)| clip_block(ti, ci, clip, hue)))
+        .child(gain_automation_overlay(ti, total, hue, &track.gain_automation))
         // Live ghost for a draw (Create) gesture on this lane.
         .child(html!("div", {
             .style("position", "absolute").style("top", "3px").style("bottom", "3px")
@@ -1301,8 +1488,16 @@ fn lane(ti: usize, total: f64, hue: f64, mute: bool, clips: &[awsm_audio_schema:
         })
         .event(move |_: events::PointerLeave| BLADE.with(|m| m.set(None)))
         .event(clone!(clips_owned => move |e: events::PointerDown| {
-            controller().selected_track.set(ti);
             let target = e.target().and_then(|t| t.dyn_ref::<web_sys::Element>().cloned());
+            let on_automation = target
+                .as_ref()
+                .and_then(|el| el.closest("[data-auto-point]").ok().flatten())
+                .is_some();
+            if on_automation {
+                clear_marquee_state();
+                return;
+            }
+            controller().selected_track.set(ti);
             let clip_idx = target.as_ref().and_then(|el| el.get_attribute("data-clip")).and_then(|s| s.parse::<usize>().ok());
             let edge = target.as_ref().and_then(|el| el.get_attribute("data-edge"));
             let t = secs_at(e.x());
@@ -1385,6 +1580,198 @@ fn lane(ti: usize, total: f64, hue: f64, mute: bool, clips: &[awsm_audio_schema:
     })
 }
 
+fn gain_automation_overlay(
+    ti: usize,
+    total: f64,
+    hue: f64,
+    points: &[awsm_audio_schema::GainPoint],
+) -> Dom {
+    let h = row_h();
+    let keyframes = points.to_vec();
+    let poly_points = automation_poly_points(total, h, &keyframes);
+    let line_stroke = if points.is_empty() {
+        "oklch(1 0 0 / 0.34)".to_string()
+    } else {
+        format!("oklch(0.82 0.16 {hue})")
+    };
+    let diamond_fill = format!("oklch(0.9 0.16 {hue})");
+    svg!("svg", {
+        .attr("style", &format!(
+            "position:absolute;left:0;top:0;width:{}px;height:{}px;z-index:4;pointer-events:none",
+            total * pps(),
+            h
+        ))
+        .attr("viewBox", &format!("0 0 {} {}", total * pps(), h))
+        .children((0..=2).map(move |i| {
+            let y = automation_y(h, i as f32);
+            svg!("line", {
+                .attr("x1", "0")
+                .attr("x2", &format!("{}", total * pps()))
+                .attr("y1", &format!("{y}"))
+                .attr("y2", &format!("{y}"))
+                .attr("stroke", "oklch(1 0 0 / 0.09)")
+                .attr("stroke-width", "1")
+            })
+        }))
+        .child(svg!("polyline", {
+            .attr("points", &poly_points)
+            .attr_signal("points", AUTO_PREVIEW.with(|p| p.signal().map({
+                let keyframes = keyframes.clone();
+                move |preview| {
+                    let points = automation_points_with_preview(&keyframes, ti, preview);
+                    automation_poly_points(total, h, &points)
+                }
+            })))
+            .attr("fill", "none")
+            .attr("stroke", &line_stroke)
+            .attr("stroke-width", if points.is_empty() { "1.4" } else { "2.2" })
+            .attr("stroke-linejoin", "round")
+            .attr("stroke-linecap", "round")
+        }))
+        .children(keyframes.clone().into_iter().enumerate().map(move |(i, p)| {
+            let point_attr = automation_diamond_points(total, h, &p);
+            let title = automation_point_title(i, &p);
+            let edit_points = keyframes.clone();
+            let signal_point = p.clone();
+            let title_point = p.clone();
+            let start_point = p.clone();
+            svg!("polygon", {
+                .attr("data-auto-point", "true")
+                .attr("style", "pointer-events:auto;cursor:move")
+                .attr("points", &point_attr)
+                .attr_signal("points", AUTO_PREVIEW.with(|preview| preview.signal().map(move |preview| {
+                    let point = automation_point_with_preview(ti, i, &signal_point, preview);
+                    automation_diamond_points(total, h, &point)
+                })))
+                .attr("fill", &diamond_fill)
+                .attr("stroke", "oklch(0.08 0.02 240)")
+                .attr("stroke-width", "1")
+                .child(svg!("title", {
+                    .text(&title)
+                    .text_signal(AUTO_PREVIEW.with(|preview| preview.signal().map(move |preview| {
+                        let point = automation_point_with_preview(ti, i, &title_point, preview);
+                        automation_point_title(i, &point)
+                    })))
+                }))
+                .event_with_options(&EventOptions::preventable(), move |e: events::PointerDown| {
+                    e.prevent_default();
+                    e.stop_propagation();
+                    clear_marquee_state();
+                    set_body_cursor(Some("move"));
+                    AUTO_PREVIEW.with(|preview| {
+                        preview.set(Some(AutomationPreview {
+                            track: ti,
+                            index: i,
+                            time: start_point.time.max(0.0),
+                            gain: start_point.gain.clamp(0.0, 4.0),
+                        }));
+                    });
+                    AUTO_DRAG.with(|d| {
+                        *d.borrow_mut() = Some(AutomationDrag {
+                            track: ti,
+                            index: i,
+                        });
+                    });
+                })
+                .event_with_options(&EventOptions::preventable(), move |e: events::DoubleClick| {
+                    e.prevent_default();
+                    e.stop_propagation();
+                    prompt_gain_point_edit(ti, i, edit_points.clone());
+                })
+                .event_with_options(&EventOptions::preventable(), move |e: events::ContextMenu| {
+                    e.prevent_default();
+                    e.stop_propagation();
+                    clear_marquee_state();
+                    controller().open_track_gain_point_menu(ti, i, e.x(), e.y());
+                })
+            })
+        }))
+    })
+}
+
+fn automation_points_with_preview(
+    points: &[awsm_audio_schema::GainPoint],
+    track: usize,
+    preview: Option<AutomationPreview>,
+) -> Vec<awsm_audio_schema::GainPoint> {
+    let mut points = points.to_vec();
+    if let Some(preview) = preview.filter(|p| p.track == track) {
+        if let Some(point) = points.get_mut(preview.index) {
+            point.time = preview.time.max(0.0);
+            point.gain = preview.gain.clamp(0.0, 4.0);
+            awsm_audio_schema::normalize_gain_points(&mut points);
+        }
+    }
+    points
+}
+
+fn automation_point_with_preview(
+    track: usize,
+    index: usize,
+    point: &awsm_audio_schema::GainPoint,
+    preview: Option<AutomationPreview>,
+) -> awsm_audio_schema::GainPoint {
+    if let Some(preview) = preview.filter(|p| p.track == track && p.index == index) {
+        awsm_audio_schema::GainPoint {
+            time: preview.time.max(0.0),
+            gain: preview.gain.clamp(0.0, 4.0),
+        }
+    } else {
+        point.clone()
+    }
+}
+
+fn automation_poly_points(total: f64, h: f64, points: &[awsm_audio_schema::GainPoint]) -> String {
+    let mut line_points: Vec<(f64, f64)> = Vec::new();
+    if points.is_empty() {
+        line_points.push((0.0, automation_y(h, 1.0)));
+        line_points.push((total, automation_y(h, 1.0)));
+    } else {
+        line_points.push((
+            0.0,
+            automation_y(h, awsm_audio_schema::gain_at_points(points, 0.0)),
+        ));
+        for p in points {
+            line_points.push((p.time.clamp(0.0, total), automation_y(h, p.gain)));
+        }
+        line_points.push((
+            total,
+            automation_y(h, awsm_audio_schema::gain_at_points(points, total)),
+        ));
+        line_points.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    }
+    line_points
+        .iter()
+        .map(|(x, y)| format!("{},{}", x * pps(), y))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn automation_diamond_points(total: f64, h: f64, point: &awsm_audio_schema::GainPoint) -> String {
+    let x = point.time.clamp(0.0, total) * pps();
+    let y = automation_y(h, point.gain);
+    format!(
+        "{x},{y1} {x2},{y} {x},{y2} {x1},{y}",
+        y1 = y - 5.0,
+        x2 = x + 5.0,
+        y2 = y + 5.0,
+        x1 = x - 5.0,
+    )
+}
+
+fn automation_point_title(index: usize, point: &awsm_audio_schema::GainPoint) -> String {
+    format!(
+        "track gain point {index}: {:.3}s, gain {:.2}",
+        point.time, point.gain
+    )
+}
+
+fn automation_y(h: f64, gain: f32) -> f64 {
+    let pad = 8.0;
+    let usable = (h - pad * 2.0).max(1.0);
+    pad + (1.0 - (gain as f64 / 2.0).clamp(0.0, 1.0)) * usable
+}
+
 fn clip_block(ti: usize, ci: usize, clip: &awsm_audio_schema::Clip, hue: f64) -> Dom {
     let name = if clip.name.is_empty() {
         format!("clip {}", ci + 1)
@@ -1395,10 +1782,16 @@ fn clip_block(ti: usize, ci: usize, clip: &awsm_audio_schema::Clip, hue: f64) ->
     let looping = clip.looping;
     let offset = clip.offset;
     let speed = clip.speed as f64;
+    let clip_gain = clip.gain;
     let base_start = clip.start;
     let base_len = clip.length;
     let speed_tag = if (clip.speed - 1.0).abs() > 0.01 {
         format!(" {:.2}\u{00d7}", clip.speed)
+    } else {
+        String::new()
+    };
+    let gain_tag = if (clip.gain - 1.0).abs() > 0.01 {
+        format!(" gain {:.2}", clip.gain)
     } else {
         String::new()
     };
@@ -1429,7 +1822,41 @@ fn clip_block(ti: usize, ci: usize, clip: &awsm_audio_schema::Clip, hue: f64) ->
             .style("position", "relative").style("font-weight", "600").style("white-space", "nowrap")
             .style("pointer-events", "none").style("padding", "1px 4px")
             .style("text-shadow", "0 1px 2px oklch(0 0 0 / 0.7)")
-            .text(&format!("{name}{speed_tag}"))
+            .text(&format!("{name}{speed_tag}{gain_tag}"))
+        }))
+        .child(html!("div", {
+            .style("position", "absolute").style("left", "4px").style("right", "28px").style("bottom", "3px")
+            .style("display", "flex").style("align-items", "center").style("gap", "4px")
+            .style("z-index", "5")
+            .style("min-width", "44px")
+            .style("padding", "1px 4px")
+            .style("border-radius", "4px")
+            .style("background", "oklch(0 0 0 / 0.38)")
+            .attr("title", "Per-clip gain for local clip balancing")
+            .event(move |e: events::PointerDown| e.stop_propagation())
+            .child(html!("span", {
+                .style("font-size", "9.5px").style("line-height", "1").style("color", "oklch(0.94 0 0)")
+                .style("pointer-events", "none")
+                .text("gain")
+            }))
+            .child(html!("input" => web_sys::HtmlInputElement, {
+                .attr("type", "range").attr("min", "0").attr("max", "2").attr("step", "0.01")
+                .attr("title", "Per-clip gain for local clip balancing")
+                .attr("aria-label", "Per-clip gain")
+                .attr("value", &format!("{clip_gain}"))
+                .style("flex", "1").style("min-width", "24px").style("height", "12px")
+                .event(move |e: events::PointerDown| e.stop_propagation())
+                .with_node!(el => {
+                    .event(move |e: events::Change| {
+                        e.stop_propagation();
+                        if let Ok(v) = el.value().parse::<f32>() {
+                            controller().dispatch(EditorCommand::EditArrange {
+                                op: ArrangeOp::SetClipGain { track: ti, clip: ci, gain: v },
+                            });
+                        }
+                    })
+                })
+            }))
         }))
         // Visible loop toggle (top-right). Accent-filled when looping. Suppresses
         // the lane's drag/select pointerdown so clicking it never moves the clip.

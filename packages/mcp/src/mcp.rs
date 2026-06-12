@@ -27,14 +27,18 @@ use rmcp::{
 use serde_json::Value;
 
 use awsm_audio_editor_protocol::schema::{
-    ArrSection, AutomationEvent, NodeId, NodeKind, SampleId, SampleKind,
+    ArrSection, AutomationEvent, GainPoint, NodeId, NodeKind, NoteEvent, SampleId, SampleKind,
+    SampleLibrary,
 };
 use awsm_audio_editor_protocol::{
     ArrangeOp, AssetInfo, BoundaryPort, EditorCommand, EditorQuery, FieldValue, PlacedClip,
-    QueryResult, Request, Response,
+    QueryResult, Request, Response, SongOp,
 };
 
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 
 use crate::link::{AgentSession, EditorLink, LinkError};
 
@@ -47,10 +51,26 @@ pub struct EditorMcp {
     /// This session's identity + editor binding. Every request routes only to the
     /// bound editor tab.
     agent: Arc<AgentSession>,
+    /// Serializes operations that temporarily mutate the editor's active sample.
+    active_sample_busy: Arc<AtomicBool>,
     // Populated by `Self::tool_router()` and consumed by the `#[tool_handler]`
     // generated routing; the dead-code lint can't see that use.
     #[allow(dead_code)]
     tool_router: ToolRouter<EditorMcp>,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+struct ActiveSampleGuard {
+    busy: Arc<AtomicBool>,
+}
+
+impl Drop for ActiveSampleGuard {
+    fn drop(&mut self) {
+        self.busy.store(false, Ordering::SeqCst);
+    }
 }
 
 // ───────────────────────────── parameter types ──────────────────────────────
@@ -314,6 +334,24 @@ pub struct SectionsParams {
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct SectionStatsParams {
+    /// Ranges to measure. Omit or pass empty to use saved arrangement sections;
+    /// if none are saved, the current marker/export range is measured.
+    #[serde(default)]
+    pub sections: Vec<ArrSection>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct StaleBecauseParams {
+    /// Specific sample to inspect. Omit to inspect every sample with a bounce.
+    #[serde(default)]
+    pub sample: Option<SampleId>,
+    /// Include clean bounces too. Defaults to false.
+    #[serde(default)]
+    pub include_clean: bool,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct SweepParams {
     /// The node whose field to sweep.
     pub node: NodeId,
@@ -395,6 +433,17 @@ pub struct CommandParams {
 pub struct BatchParams {
     /// `EditorCommand`s applied in order in one round-trip.
     pub commands: Vec<Flexible<EditorCommand>>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct SampleScopedBatchParams {
+    /// Sample whose canvas/arrangement should be active while commands run.
+    pub sample: SampleId,
+    /// EditorCommands applied while `sample` is active.
+    pub commands: Vec<Flexible<EditorCommand>>,
+    /// Restore the previously active sample afterward. Defaults to true.
+    #[serde(default = "default_true")]
+    pub restore_previous: bool,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -595,6 +644,39 @@ pub struct TrackGainParams {
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct TrackGainPointsParams {
+    pub track: usize,
+    /// Complete replacement automation lane. Times are arrangement seconds;
+    /// gains are linear multipliers, interpolated between points.
+    pub points: Vec<GainPoint>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct TrackGainPointParams {
+    pub track: usize,
+    /// One automation keyframe. If another point has the same time, it is replaced.
+    pub point: GainPoint,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct RemoveTrackGainPointParams {
+    pub track: usize,
+    /// 0-based point index in the track's sorted `gain_automation` list.
+    pub index: usize,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct MoveTrackGainPointParams {
+    pub track: usize,
+    /// 0-based point index in the track's sorted `gain_automation` list.
+    pub index: usize,
+    /// New keyframe time in arrangement seconds.
+    pub time: f64,
+    /// New linear gain multiplier.
+    pub gain: f32,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct BpmParams {
     /// Tempo in BPM (clamped 20–400 by the editor).
     pub bpm: f64,
@@ -645,6 +727,87 @@ pub struct DuplicateClipsParams {
     pub beats_per_bar: Option<f64>,
 }
 
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct TrackEventsParams {
+    /// Note Sequencer node id.
+    pub node: NodeId,
+    /// 0-based song track index.
+    pub track: usize,
+    /// Complete replacement note list for the track.
+    pub events: Vec<NoteEvent>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct TransposeTrackParams {
+    pub node: NodeId,
+    pub track: usize,
+    /// Semitones to add to every note, clamped to MIDI 0..=127.
+    pub semitones: i32,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct ScaleVelocitiesParams {
+    pub node: NodeId,
+    pub track: usize,
+    /// Multiplier applied to every velocity, clamped to 1..=127.
+    pub factor: f32,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct HumanizeTrackParams {
+    pub node: NodeId,
+    pub track: usize,
+    /// Maximum absolute timing offset in beats.
+    #[serde(default)]
+    pub timing_beats: f64,
+    /// Maximum absolute velocity offset in MIDI velocity units.
+    #[serde(default)]
+    pub velocity: i16,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct ReplaceNotesParams {
+    pub node: NodeId,
+    pub track: usize,
+    /// Start of the replacement window in beats. Omit to replace from the start.
+    #[serde(default)]
+    pub start: Option<f64>,
+    /// End of the replacement window in beats. Omit to replace to infinity.
+    #[serde(default)]
+    pub end: Option<f64>,
+    /// Notes to insert after removing notes whose starts fall in [start, end).
+    pub events: Vec<NoteEvent>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct CloneSequenceTransformParams {
+    /// Sound/sequence sample to clone.
+    pub sample: SampleId,
+    /// Optional name for the clone.
+    #[serde(default)]
+    pub name: Option<String>,
+    /// Which Note Sequencer in the cloned sample to transform. Defaults to first.
+    #[serde(default)]
+    pub sequencer_index: usize,
+    /// Track index within that Note Sequencer.
+    pub track: usize,
+    /// Semitones to add to every note.
+    #[serde(default)]
+    pub transpose: i32,
+    /// Velocity multiplier. Defaults to 1.0.
+    #[serde(default)]
+    pub velocity_factor: Option<f32>,
+    /// Deterministic timing humanization in beats.
+    #[serde(default)]
+    pub humanize_timing_beats: f64,
+    /// Deterministic velocity humanization in MIDI velocity units.
+    #[serde(default)]
+    pub humanize_velocity: i16,
+    /// Restore the previous active sample afterward. Defaults to true.
+    #[serde(default = "default_true")]
+    pub restore_previous: bool,
+}
+
 // ──────────────────────────────── tools ─────────────────────────────────────
 
 #[tool_router]
@@ -654,7 +817,47 @@ impl EditorMcp {
         Self {
             link,
             agent,
+            active_sample_busy: Arc::new(AtomicBool::new(false)),
             tool_router: Self::tool_router(),
+        }
+    }
+
+    async fn active_sample_guard(&self) -> (ActiveSampleGuard, bool) {
+        let mut waited = false;
+        loop {
+            if self
+                .active_sample_busy
+                .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+                .is_ok()
+            {
+                return (
+                    ActiveSampleGuard {
+                        busy: self.active_sample_busy.clone(),
+                    },
+                    waited,
+                );
+            }
+            waited = true;
+            tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+        }
+    }
+
+    async fn active_sample_id(&self) -> Result<SampleId, McpError> {
+        match self.query_result(EditorQuery::Samples).await? {
+            QueryResult::Samples(samples) => samples
+                .into_iter()
+                .find(|s| s.is_active)
+                .map(|s| s.id)
+                .ok_or_else(|| McpError::internal_error("no active sample reported", None)),
+            other => Err(unexpected_query(other)),
+        }
+    }
+
+    async fn set_active_sample_raw(&self, sample: SampleId) -> Result<(), McpError> {
+        match self.req(Request::SetActiveSample { sample }).await? {
+            Response::Ok => Ok(()),
+            Response::Err(e) => Err(McpError::internal_error(e, None)),
+            other => Err(unexpected(other)),
         }
     }
 
@@ -1097,6 +1300,239 @@ impl EditorMcp {
         .await
     }
 
+    #[tool(description = "Replace all notes on one Note Sequencer track in one \
+        call. This is the typed wrapper for edit_song/set_track_events, useful \
+        for authoring full patterns without raw dispatch payloads.")]
+    async fn set_track_events(
+        &self,
+        Parameters(p): Parameters<TrackEventsParams>,
+    ) -> Result<CallToolResult, McpError> {
+        self.dispatch(EditorCommand::EditSong {
+            node: p.node,
+            op: SongOp::SetTrackEvents {
+                track: p.track,
+                events: p.events,
+            },
+        })
+        .await
+    }
+
+    #[tool(description = "Transpose every note on one Note Sequencer track by a \
+        semitone offset, clamped to MIDI note 0..=127.")]
+    async fn transpose_track(
+        &self,
+        Parameters(p): Parameters<TransposeTrackParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let events = match self.query_result(EditorQuery::Snapshot).await? {
+            QueryResult::Snapshot(s) => snapshot_track_events(&s, p.node, p.track)?,
+            other => return Err(unexpected_query(other)),
+        };
+        let events = events
+            .into_iter()
+            .map(|mut e| {
+                e.note = (e.note as i32 + p.semitones).clamp(0, 127) as u8;
+                e
+            })
+            .collect();
+        self.dispatch(EditorCommand::EditSong {
+            node: p.node,
+            op: SongOp::SetTrackEvents {
+                track: p.track,
+                events,
+            },
+        })
+        .await
+    }
+
+    #[tool(description = "Scale every velocity on one Note Sequencer track by a \
+        multiplier, clamped to MIDI velocity 1..=127.")]
+    async fn scale_velocities(
+        &self,
+        Parameters(p): Parameters<ScaleVelocitiesParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let events = match self.query_result(EditorQuery::Snapshot).await? {
+            QueryResult::Snapshot(s) => snapshot_track_events(&s, p.node, p.track)?,
+            other => return Err(unexpected_query(other)),
+        };
+        let factor = p.factor.max(0.0);
+        let events = events
+            .into_iter()
+            .map(|mut e| {
+                e.velocity = ((e.velocity as f32 * factor).round() as i32).clamp(1, 127) as u8;
+                e
+            })
+            .collect();
+        self.dispatch(EditorCommand::EditSong {
+            node: p.node,
+            op: SongOp::SetTrackEvents {
+                track: p.track,
+                events,
+            },
+        })
+        .await
+    }
+
+    #[tool(
+        description = "Deterministically humanize one Note Sequencer track by \
+        adding bounded timing and velocity offsets. This avoids random MCP \
+        results while still breaking a rigid grid."
+    )]
+    async fn humanize_track(
+        &self,
+        Parameters(p): Parameters<HumanizeTrackParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let events = match self.query_result(EditorQuery::Snapshot).await? {
+            QueryResult::Snapshot(s) => snapshot_track_events(&s, p.node, p.track)?,
+            other => return Err(unexpected_query(other)),
+        };
+        let timing = p.timing_beats.max(0.0);
+        let vel = p.velocity.max(0) as i32;
+        let events = events
+            .into_iter()
+            .enumerate()
+            .map(|(i, mut e)| {
+                let a = (((i * 37 + p.track * 17) % 101) as f64 / 50.0) - 1.0;
+                let b = (((i * 53 + p.track * 29 + 11) % 101) as f64 / 50.0) - 1.0;
+                e.start = (e.start + a * timing).max(0.0);
+                e.velocity =
+                    (e.velocity as i32 + (b * vel as f64).round() as i32).clamp(1, 127) as u8;
+                e
+            })
+            .collect();
+        self.dispatch(EditorCommand::EditSong {
+            node: p.node,
+            op: SongOp::SetTrackEvents {
+                track: p.track,
+                events,
+            },
+        })
+        .await
+    }
+
+    #[tool(description = "Replace notes whose starts fall inside a beat window \
+        on one Note Sequencer track, keeping notes outside the window. Omit \
+        start/end to replace from the beginning/to the end.")]
+    async fn replace_notes(
+        &self,
+        Parameters(p): Parameters<ReplaceNotesParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let current = match self.query_result(EditorQuery::Snapshot).await? {
+            QueryResult::Snapshot(s) => snapshot_track_events(&s, p.node, p.track)?,
+            other => return Err(unexpected_query(other)),
+        };
+        let start = p.start.unwrap_or(f64::NEG_INFINITY);
+        let end = p.end.unwrap_or(f64::INFINITY);
+        if end <= start {
+            return Err(McpError::invalid_params(
+                "end must be greater than start",
+                None,
+            ));
+        }
+        let mut events: Vec<NoteEvent> = current
+            .into_iter()
+            .filter(|e| e.start < start || e.start >= end)
+            .chain(p.events.into_iter())
+            .collect();
+        events.sort_by(|a, b| {
+            a.start
+                .partial_cmp(&b.start)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        self.dispatch(EditorCommand::EditSong {
+            node: p.node,
+            op: SongOp::SetTrackEvents {
+                track: p.track,
+                events,
+            },
+        })
+        .await
+    }
+
+    #[tool(description = "Clone a sequenced Sound, then transform one Note \
+        Sequencer track in the clone. This is the arrangement-variation helper: \
+        fork a loop and apply transpose, velocity scaling, and/or deterministic \
+        humanization without hand-building a large edit_song payload. The clone \
+        gets fresh node ids, so select the sequencer by index.")]
+    async fn clone_sequence_transform(
+        &self,
+        Parameters(p): Parameters<CloneSequenceTransformParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let (_guard, waited) = self.active_sample_guard().await;
+        let previous = self.active_sample_id().await.ok();
+        self.set_active_sample_raw(p.sample).await?;
+        let clone_id = self
+            .dispatch_created(EditorCommand::CloneSample { id: p.sample })
+            .await?
+            .ok_or_else(|| McpError::internal_error("clone returned no sample id", None))?;
+        let clone_sample = parse_sample_id(&clone_id)?;
+        if let Some(name) = p.name.clone() {
+            self.dispatch(EditorCommand::RenameSample {
+                id: clone_sample,
+                name,
+            })
+            .await?;
+        }
+        let snap = match self.query_result(EditorQuery::Snapshot).await? {
+            QueryResult::Snapshot(s) => s,
+            other => return Err(unexpected_query(other)),
+        };
+        let node = note_sequencer_at(&snap, p.sequencer_index)?;
+        let velocity_factor = p.velocity_factor.unwrap_or(1.0).max(0.0);
+        let timing = p.humanize_timing_beats.max(0.0);
+        let vel_humanize = p.humanize_velocity.max(0) as i32;
+        let events = snapshot_track_events(&snap, node, p.track)?
+            .into_iter()
+            .enumerate()
+            .map(|(i, mut e)| {
+                e.note = (e.note as i32 + p.transpose).clamp(0, 127) as u8;
+                let a = (((i * 37 + p.track * 17) % 101) as f64 / 50.0) - 1.0;
+                let b = (((i * 53 + p.track * 29 + 11) % 101) as f64 / 50.0) - 1.0;
+                e.start = (e.start + a * timing).max(0.0);
+                e.velocity = ((e.velocity as f32 * velocity_factor).round() as i32
+                    + (b * vel_humanize as f64).round() as i32)
+                    .clamp(1, 127) as u8;
+                e
+            })
+            .collect();
+        self.dispatch(EditorCommand::EditSong {
+            node,
+            op: SongOp::SetTrackEvents {
+                track: p.track,
+                events,
+            },
+        })
+        .await?;
+        let restore_error = if p.restore_previous {
+            if let Some(prev) = previous {
+                if prev != clone_sample {
+                    self.set_active_sample_raw(prev)
+                        .await
+                        .err()
+                        .map(|e| format!("{e:?}"))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        Ok(text(
+            serde_json::json!({
+                "ok": true,
+                "source": p.sample,
+                "clone": clone_sample,
+                "sequencer": node,
+                "track": p.track,
+                "waited_for_active_sample": waited,
+                "restored_previous": p.restore_previous && restore_error.is_none(),
+                "restore_error": restore_error,
+            })
+            .to_string(),
+        ))
+    }
+
     #[tool(
         description = "Render a Sound (`sample`) offline and store it as that \
         sample's bounce (so it can be dropped into an arrangement). Sequenced \
@@ -1216,20 +1652,28 @@ impl EditorMcp {
         description = "Switch the active editing canvas to `sample`, so subsequent \
         edits/queries (add_node, connect, get_snapshot, …) operate on its graph. \
         Use this to author a sub-sample (e.g. an instrument Sound): switch to it, \
-        build its graph, then switch back to wire it up."
+        build its graph, then switch back to wire it up. This is session-global \
+        editor state; do not run set_active_sample in parallel with other \
+        active-canvas mutations."
     )]
     async fn set_active_sample(
         &self,
         Parameters(p): Parameters<SampleReq>,
     ) -> Result<CallToolResult, McpError> {
-        match self
-            .req(Request::SetActiveSample { sample: p.sample })
-            .await?
-        {
-            Response::Ok => Ok(text("ok")),
-            Response::Err(e) => Err(McpError::internal_error(e, None)),
-            other => Err(unexpected(other)),
-        }
+        let (_guard, waited) = self.active_sample_guard().await;
+        self.set_active_sample_raw(p.sample).await?;
+        Ok(text(
+            serde_json::json!({
+                "ok": true,
+                "sample": p.sample,
+                "warning": if waited {
+                    "waited for another active-sample operation; active sample is session-global"
+                } else {
+                    "active sample is session-global; avoid parallel active-canvas mutations"
+                }
+            })
+            .to_string(),
+        ))
     }
 
     #[tool(
@@ -1456,6 +1900,73 @@ impl EditorMcp {
             gain: p.gain,
         })
         .await
+    }
+
+    #[tool(description = "Replace a track's arrangement-level gain automation \
+        points. Use this for musical energy shaping over time; it is additive \
+        with static track gain and per-clip gain. Points are {time,gain} in \
+        seconds/linear gain and interpolate linearly.")]
+    async fn set_track_gain_points(
+        &self,
+        Parameters(p): Parameters<TrackGainPointsParams>,
+    ) -> Result<CallToolResult, McpError> {
+        self.arrange(ArrangeOp::SetTrackGainPoints {
+            track: p.track,
+            points: p.points,
+        })
+        .await
+    }
+
+    #[tool(description = "Add or replace one arrangement track gain automation \
+        point. Use this for ramps/drops/swell energy, not local clip balancing.")]
+    async fn add_track_gain_point(
+        &self,
+        Parameters(p): Parameters<TrackGainPointParams>,
+    ) -> Result<CallToolResult, McpError> {
+        self.arrange(ArrangeOp::AddTrackGainPoint {
+            track: p.track,
+            point: p.point,
+        })
+        .await
+    }
+
+    #[tool(description = "Remove one arrangement track gain automation point by \
+        sorted point index from get_arrangement.")]
+    async fn remove_track_gain_point(
+        &self,
+        Parameters(p): Parameters<RemoveTrackGainPointParams>,
+    ) -> Result<CallToolResult, McpError> {
+        self.arrange(ArrangeOp::RemoveTrackGainPoint {
+            track: p.track,
+            index: p.index,
+        })
+        .await
+    }
+
+    #[tool(description = "Move/update one arrangement track gain automation \
+        point by sorted point index from get_arrangement. This is the MCP \
+        equivalent of dragging a diamond keyframe in the Arrange UI.")]
+    async fn move_track_gain_point(
+        &self,
+        Parameters(p): Parameters<MoveTrackGainPointParams>,
+    ) -> Result<CallToolResult, McpError> {
+        self.arrange(ArrangeOp::MoveTrackGainPoint {
+            track: p.track,
+            index: p.index,
+            time: p.time,
+            gain: p.gain,
+        })
+        .await
+    }
+
+    #[tool(description = "Clear all arrangement track gain automation points on \
+        a track. Static track gain and per-clip gains are preserved.")]
+    async fn clear_track_gain_automation(
+        &self,
+        Parameters(p): Parameters<TrackArg>,
+    ) -> Result<CallToolResult, McpError> {
+        self.arrange(ArrangeOp::ClearTrackGainAutomation { track: p.track })
+            .await
     }
 
     #[tool(
@@ -1891,7 +2402,8 @@ impl EditorMcp {
 
     #[tool(description = "Export a sample as a portable patch: a self-contained \
         SampleLibrary TOML holding the sample, every sub-sample it references, \
-        and the assets they use (WASM modules, audio buffers, bounces) — \
+        arrangement clip source samples, and the assets they use (WASM modules, \
+        audio buffers, bounces) — \
         experiments are valuable as patches, not just rendered audio. Re-open \
         with import_sample (any project). A directory path gets \
         `<sample-name>.toml` appended.")]
@@ -1899,82 +2411,25 @@ impl EditorMcp {
         &self,
         Parameters(p): Parameters<ExportSampleParams>,
     ) -> Result<CallToolResult, McpError> {
-        use awsm_audio_editor_protocol::schema::SampleLibrary;
         let project = match self.query_result(EditorQuery::Project).await? {
             QueryResult::Project(proj) => proj,
             other => return Err(unexpected_query(other)),
         };
-        let lib = project.library;
-        // Transitive closure over Sample-ref nodes, starting at the target.
-        let mut keep: Vec<SampleId> = vec![p.sample];
-        let mut i = 0;
-        while i < keep.len() {
-            let id = keep[i];
-            i += 1;
-            let Some(sample) = lib.samples.iter().find(|s| s.id == id) else {
-                return Err(McpError::invalid_params(format!("no sample {id}"), None));
-            };
-            for node in &sample.graph.nodes {
-                if let NodeKind::Sample(sr) = &node.kind {
-                    if !keep.contains(&sr.sample) {
-                        keep.push(sr.sample);
-                    }
-                }
-            }
-        }
-        let samples: Vec<_> = lib
-            .samples
-            .iter()
-            .filter(|s| keep.contains(&s.id))
-            .cloned()
-            .collect();
-        // Prune the asset table to what the kept samples actually reference.
-        let mut out = SampleLibrary {
-            root: Some(p.sample),
-            samples,
-            ..Default::default()
-        };
-        for sample in &out.samples.clone() {
-            if let Some(b) = &sample.bounce {
-                if let Some(a) = lib.assets.buffers.iter().find(|a| a.id == b.asset) {
-                    if !out.assets.buffers.iter().any(|x| x.id == a.id) {
-                        out.assets.buffers.push(a.clone());
-                    }
-                }
-            }
-            for node in &sample.graph.nodes {
-                let buffer = match &node.kind {
-                    NodeKind::AudioBufferSource(b) => b.buffer,
-                    NodeKind::Convolver(c) => c.buffer,
-                    NodeKind::AudioWorklet(w) => {
-                        if let Some(a) = w
-                            .module
-                            .and_then(|m| lib.assets.wasm_modules.iter().find(|x| x.id == m))
-                        {
-                            if !out.assets.wasm_modules.iter().any(|x| x.id == a.id) {
-                                out.assets.wasm_modules.push(a.clone());
-                            }
-                        }
-                        None
-                    }
-                    _ => None,
-                };
-                if let Some(a) = buffer.and_then(|b| lib.assets.buffers.iter().find(|x| x.id == b))
-                {
-                    if !out.assets.buffers.iter().any(|x| x.id == a.id) {
-                        out.assets.buffers.push(a.clone());
-                    }
-                }
-            }
-        }
+        let (out, clip_sources) = export_library_subset(&project.library, p.sample)?;
         let name = out
             .samples
             .iter()
             .find(|s| s.id == p.sample)
             .map(|s| s.name.clone())
             .unwrap_or_else(|| "sample".to_string());
-        let toml_text = toml::to_string_pretty(&out)
-            .map_err(|e| McpError::internal_error(format!("encode TOML: {e}"), None))?;
+        let toml_text = toml::to_string_pretty(&out).map_err(|e| {
+            McpError::internal_error(
+                format!(
+                    "encode TOML: {e}; run export_sample_preflight for embedded samples/assets"
+                ),
+                None,
+            )
+        })?;
         let mut dest = std::path::PathBuf::from(&p.path);
         if p.path.ends_with('/') || dest.is_dir() {
             let safe: String = name
@@ -1998,8 +2453,47 @@ impl EditorMcp {
                 "ok": true,
                 "path": dest.display().to_string(),
                 "samples": out.samples.iter().map(|s| s.name.clone()).collect::<Vec<_>>(),
+                "clip_sources_embedded": clip_sources,
                 "buffers": out.assets.buffers.len(),
                 "wasm_modules": out.assets.wasm_modules.len(),
+            })
+            .to_string(),
+        ))
+    }
+
+    #[tool(
+        description = "Preflight export_sample without writing a file: reports \
+        the sample closure, arrangement clip sources that will be embedded, assets \
+        included, and whether the resulting portable TOML encodes cleanly."
+    )]
+    async fn export_sample_preflight(
+        &self,
+        Parameters(p): Parameters<SampleReq>,
+    ) -> Result<CallToolResult, McpError> {
+        let project = match self.query_result(EditorQuery::Project).await? {
+            QueryResult::Project(proj) => proj,
+            other => return Err(unexpected_query(other)),
+        };
+        let (out, clip_sources) = export_library_subset(&project.library, p.sample)?;
+        let toml_status = match toml::to_string_pretty(&out) {
+            Ok(t) => serde_json::json!({ "ok": true, "bytes": t.len() }),
+            Err(e) => serde_json::json!({ "ok": false, "error": e.to_string() }),
+        };
+        Ok(text(
+            serde_json::json!({
+                "sample": p.sample,
+                "samples": out.samples.iter().map(|s| serde_json::json!({
+                    "id": s.id,
+                    "name": s.name,
+                    "kind": s.kind,
+                    "has_bounce": s.bounce.is_some(),
+                })).collect::<Vec<_>>(),
+                "clip_sources_embedded": clip_sources,
+                "assets": {
+                    "buffers": out.assets.buffers.len(),
+                    "wasm_modules": out.assets.wasm_modules.len(),
+                },
+                "toml": toml_status,
             })
             .to_string(),
         ))
@@ -2151,6 +2645,33 @@ impl EditorMcp {
     )]
     async fn arrangement_track_stats(&self) -> Result<CallToolResult, McpError> {
         self.query(EditorQuery::ArrangementTrackStats).await
+    }
+
+    #[tool(
+        description = "Section-level arrangement loudness/brightness diagnostics. \
+        Measures peak/RMS/clipping/spectral centroid/brightness over explicit \
+        ranges, saved arrangement sections, or the current marker/export range. \
+        This is read-only and does not move loop markers or affect undo."
+    )]
+    async fn arrangement_section_stats(
+        &self,
+        Parameters(p): Parameters<SectionStatsParams>,
+    ) -> Result<CallToolResult, McpError> {
+        for s in &p.sections {
+            if s.end <= s.start {
+                return Err(McpError::invalid_params(
+                    format!(
+                        "section \"{}\": end ({}) must be > start ({})",
+                        s.name, s.end, s.start
+                    ),
+                    None,
+                ));
+            }
+        }
+        self.query(EditorQuery::ArrangementSectionStats {
+            sections: p.sections,
+        })
+        .await
     }
 
     #[tool(description = "One-call pre-export check of the active arrangement: \
@@ -2363,6 +2884,177 @@ impl EditorMcp {
         ))
     }
 
+    #[tool(description = "Report arrangement gain causes by track/clip/time: \
+        non-unity static track gains, non-unity per-clip gains, and track gain \
+        automation points with both seconds and bar positions. Use this when a \
+        section sounds quieter/louder and you need to know whether the cause is \
+        clip balancing or musical track automation.")]
+    async fn arrangement_gain_diagnostics(&self) -> Result<CallToolResult, McpError> {
+        let arr = match self.query_result(EditorQuery::Arrangement).await? {
+            QueryResult::Arrangement(Some(a)) => a,
+            QueryResult::Arrangement(None) => {
+                return Err(McpError::invalid_params(
+                    "active sample is not an arrangement — set_active_sample to one first",
+                    None,
+                ));
+            }
+            other => return Err(unexpected_query(other)),
+        };
+        let sec_to_bar = |secs: f64| secs * arr.bpm / (4.0 * 60.0);
+        let mut track_gains = Vec::new();
+        let mut clip_gains = Vec::new();
+        let mut automation = Vec::new();
+        for (ti, track) in arr.tracks.iter().enumerate() {
+            if (track.gain - 1.0).abs() > 0.01 {
+                track_gains.push(serde_json::json!({
+                    "track": ti,
+                    "name": track.name.clone(),
+                    "gain": track.gain,
+                    "role": "static track mix gain",
+                }));
+            }
+            for (pi, point) in track.gain_automation.iter().enumerate() {
+                automation.push(serde_json::json!({
+                    "track": ti,
+                    "name": track.name.clone(),
+                    "point": pi,
+                    "time": point.time,
+                    "bar": sec_to_bar(point.time),
+                    "gain": point.gain,
+                    "role": "track gain automation for musical energy shaping",
+                }));
+            }
+            for (ci, clip) in track.clips.iter().enumerate() {
+                if (clip.gain - 1.0).abs() > 0.01 {
+                    clip_gains.push(serde_json::json!({
+                        "track": ti,
+                        "track_name": track.name.clone(),
+                        "clip": ci,
+                        "clip_name": clip.name.clone(),
+                        "start": clip.start,
+                        "bar": sec_to_bar(clip.start),
+                        "gain": clip.gain,
+                        "role": "per-clip local balancing",
+                    }));
+                }
+            }
+        }
+        Ok(text(
+            serde_json::json!({
+                "bpm": arr.bpm,
+                "track_gains": track_gains,
+                "clip_gains": clip_gains,
+                "track_gain_automation": automation,
+                "summary": {
+                    "tracks_with_static_gain": track_gains.len(),
+                    "clips_with_non_unity_gain": clip_gains.len(),
+                    "automation_points": automation.len(),
+                }
+            })
+            .to_string(),
+        ))
+    }
+
+    #[tool(description = "Explain stale bounce signals. For each stale bounced \
+        sample, reports whether the current source includes sequencer data, \
+        AudioParam automation, sample references, or arrangement clip sources. \
+        The clean/stale decision is exact; cause categories are diagnostic \
+        signals for what can make that bounce stale.")]
+    async fn stale_because_report(
+        &self,
+        Parameters(p): Parameters<StaleBecauseParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let project = match self.query_result(EditorQuery::Project).await? {
+            QueryResult::Project(proj) => proj,
+            other => return Err(unexpected_query(other)),
+        };
+        let samples_info = match self.query_result(EditorQuery::Samples).await? {
+            QueryResult::Samples(s) => s,
+            other => return Err(unexpected_query(other)),
+        };
+        let status_for = |id: SampleId| {
+            samples_info
+                .iter()
+                .find(|s| s.id == id)
+                .and_then(|s| s.bounce.clone())
+                .unwrap_or_else(|| "not_bounceable".into())
+        };
+        let mut reports = Vec::new();
+        for sample in &project.library.samples {
+            if p.sample.is_some_and(|id| id != sample.id) {
+                continue;
+            }
+            let status = status_for(sample.id);
+            let has_bounce = sample.bounce.is_some();
+            if !has_bounce && p.sample.is_none() {
+                continue;
+            }
+            if !p.include_clean && status == "clean" {
+                continue;
+            }
+            let sequencer_nodes: Vec<Value> = sample
+                .graph
+                .nodes
+                .iter()
+                .filter_map(|n| match &n.kind {
+                    NodeKind::NoteSequencer(_) => Some(serde_json::json!({
+                        "node": n.id,
+                        "kind": "note_sequencer",
+                    })),
+                    NodeKind::ControlSequencer(_) => Some(serde_json::json!({
+                        "node": n.id,
+                        "kind": "control_sequencer",
+                    })),
+                    _ => None,
+                })
+                .collect();
+            let graph_value = serde_json::to_value(&sample.graph).unwrap_or(Value::Null);
+            let refs = sample_source_refs(sample);
+            let source_samples: Vec<Value> = refs
+                .iter()
+                .map(|id| {
+                    let info = samples_info.iter().find(|s| s.id == *id);
+                    serde_json::json!({
+                        "sample": id,
+                        "name": info.map(|s| s.name.clone()).unwrap_or_default(),
+                        "kind": info.map(|s| format!("{:?}", s.kind)).unwrap_or_default(),
+                        "bounce": status_for(*id),
+                    })
+                })
+                .collect();
+            reports.push(serde_json::json!({
+                "sample": sample.id,
+                "name": sample.name,
+                "kind": sample.kind,
+                "bounce": status,
+                "stale": status == "stale" || status == "dirty",
+                "signals": {
+                    "graph": !sample.graph.nodes.is_empty() || !sample.graph.connections.is_empty(),
+                    "sequencer_nodes": sequencer_nodes,
+                    "audio_param_automation": has_audio_param_automation(&graph_value),
+                    "source_samples": source_samples,
+                    "arrangement_clip_sources": sample.arrangement.tracks.iter().map(|t| t.clips.len()).sum::<usize>(),
+                },
+                "precision": "stale/clean is exact; signal categories identify current data that contributes to the bounce hash",
+            }));
+        }
+        let reported = reports.len();
+        let stale = reports
+            .iter()
+            .filter(|r| r.get("stale").and_then(Value::as_bool) == Some(true))
+            .count();
+        Ok(text(
+            serde_json::json!({
+                "reports": reports,
+                "summary": {
+                    "reported": reported,
+                    "stale": stale,
+                }
+            })
+            .to_string(),
+        ))
+    }
+
     #[tool(
         description = "Return the recommended Cargo.toml for authoring an awsm-audio \
         WASM DSP worklet (the crates.io release; dependency version derived so it \
@@ -2566,6 +3258,70 @@ impl EditorMcp {
                 serde_json::to_string(&items).unwrap_or_else(|e| format!("{{\"error\":\"{e}\"}}")),
             )),
             Response::Ok => Ok(text("ok")),
+            Response::Err(e) => Err(McpError::internal_error(e, None)),
+            other => Err(unexpected(other)),
+        }
+    }
+
+    #[tool(
+        description = "Run EditorCommands while a specific sample is active, then \
+        restore the previous active sample by default. This avoids separate \
+        set_active_sample calls and serializes the session-global active-sample \
+        state so parallel tool calls do not race it."
+    )]
+    async fn dispatch_in_sample(
+        &self,
+        Parameters(p): Parameters<SampleScopedBatchParams>,
+    ) -> Result<CallToolResult, McpError> {
+        if p.commands.is_empty() {
+            return Err(McpError::invalid_params(
+                "dispatch_in_sample needs a non-empty `commands` array",
+                None,
+            ));
+        }
+        let cmds: Vec<EditorCommand> = p.commands.into_iter().map(|c| c.0).collect();
+        let (_guard, waited) = self.active_sample_guard().await;
+        let previous = self.active_sample_id().await.ok();
+        self.set_active_sample_raw(p.sample).await?;
+        let dispatch = self.req(Request::DispatchBatch(cmds)).await?;
+        let restore_error = if p.restore_previous {
+            if let Some(prev) = previous {
+                if prev != p.sample {
+                    self.set_active_sample_raw(prev)
+                        .await
+                        .err()
+                        .map(|e| format!("{e:?}"))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        match dispatch {
+            Response::Batch(items) => Ok(text(
+                serde_json::json!({
+                    "ok": true,
+                    "sample": p.sample,
+                    "waited_for_active_sample": waited,
+                    "restored_previous": p.restore_previous && restore_error.is_none(),
+                    "restore_error": restore_error,
+                    "results": items,
+                })
+                .to_string(),
+            )),
+            Response::Ok => Ok(text(
+                serde_json::json!({
+                    "ok": true,
+                    "sample": p.sample,
+                    "waited_for_active_sample": waited,
+                    "restored_previous": p.restore_previous && restore_error.is_none(),
+                    "restore_error": restore_error,
+                })
+                .to_string(),
+            )),
             Response::Err(e) => Err(McpError::internal_error(e, None)),
             other => Err(unexpected(other)),
         }
@@ -3280,6 +4036,11 @@ edit_arrange only for the few without one. All edit the *active* Arrangement.
     remove_track      {"track":0}                                (remove_arrangement_track)
     set_track_name    {"track":0,"name":"Drums"}                 (set_track_name)
     set_track_gain    {"track":0,"gain":0.8}                     (set_track_gain)
+    set_track_gain_points {"track":0,"points":[{"time":0.0,"gain":1.0}]} (set_track_gain_points)
+    add_track_gain_point {"track":0,"point":{"time":8.0,"gain":0.6}}     (add_track_gain_point)
+    move_track_gain_point {"track":0,"index":0,"time":8.0,"gain":0.6}    (move_track_gain_point)
+    remove_track_gain_point {"track":0,"index":0}                (remove_track_gain_point)
+    clear_track_gain_automation {"track":0}                      (clear_track_gain_automation)
     set_track_mute    {"track":0,"mute":true}
     set_track_solo    {"track":0,"solo":true}
     add_clip          {"track":0,"start":0.0,"source":"<id>","length":4.0}  (add_clip)
@@ -3789,6 +4550,171 @@ fn parse_node_id(s: &str) -> Result<NodeId, McpError> {
         .map_err(|e| McpError::internal_error(format!("bad node id {s}: {e}"), None))
 }
 
+fn parse_sample_id(s: &str) -> Result<SampleId, McpError> {
+    s.parse::<SampleId>()
+        .map_err(|e| McpError::internal_error(format!("bad sample id {s}: {e}"), None))
+}
+
+fn snapshot_track_events(
+    snap: &awsm_audio_editor_protocol::EditorSnapshot,
+    node: NodeId,
+    track: usize,
+) -> Result<Vec<NoteEvent>, McpError> {
+    let Some(n) = snap.graph.nodes.iter().find(|n| n.id == node) else {
+        return Err(McpError::invalid_params(format!("no node {node}"), None));
+    };
+    let NodeKind::NoteSequencer(seq) = &n.kind else {
+        return Err(McpError::invalid_params(
+            format!("node {node} is not a note_sequencer"),
+            None,
+        ));
+    };
+    seq.song
+        .tracks
+        .get(track)
+        .map(|t| t.events.clone())
+        .ok_or_else(|| McpError::invalid_params(format!("track {track} is out of range"), None))
+}
+
+fn note_sequencer_at(
+    snap: &awsm_audio_editor_protocol::EditorSnapshot,
+    index: usize,
+) -> Result<NodeId, McpError> {
+    snap.graph
+        .nodes
+        .iter()
+        .filter(|n| matches!(n.kind, NodeKind::NoteSequencer(_)))
+        .nth(index)
+        .map(|n| n.id)
+        .ok_or_else(|| {
+            McpError::invalid_params(
+                format!("no note_sequencer at sequencer_index {index}"),
+                None,
+            )
+        })
+}
+
+fn sample_source_refs(sample: &awsm_audio_editor_protocol::schema::Sample) -> Vec<SampleId> {
+    let mut refs = Vec::new();
+    for node in &sample.graph.nodes {
+        if let NodeKind::Sample(sr) = &node.kind {
+            if !refs.contains(&sr.sample) {
+                refs.push(sr.sample);
+            }
+        }
+    }
+    for track in &sample.arrangement.tracks {
+        for clip in &track.clips {
+            if !refs.contains(&clip.source) {
+                refs.push(clip.source);
+            }
+        }
+    }
+    refs
+}
+
+fn has_audio_param_automation(value: &Value) -> bool {
+    match value {
+        Value::Object(obj) => {
+            let looks_like_audio_param = obj.contains_key("value")
+                && obj
+                    .get("events")
+                    .and_then(Value::as_array)
+                    .is_some_and(|events| !events.is_empty());
+            looks_like_audio_param || obj.values().any(has_audio_param_automation)
+        }
+        Value::Array(items) => items.iter().any(has_audio_param_automation),
+        _ => false,
+    }
+}
+
+fn export_library_subset(
+    lib: &SampleLibrary,
+    target: SampleId,
+) -> Result<(SampleLibrary, Vec<Value>), McpError> {
+    let mut keep: Vec<SampleId> = vec![target];
+    let mut clip_sources: Vec<Value> = Vec::new();
+    let mut i = 0;
+    while i < keep.len() {
+        let id = keep[i];
+        i += 1;
+        let Some(sample) = lib.samples.iter().find(|s| s.id == id) else {
+            return Err(McpError::invalid_params(format!("no sample {id}"), None));
+        };
+        for node in &sample.graph.nodes {
+            if let NodeKind::Sample(sr) = &node.kind {
+                if !keep.contains(&sr.sample) {
+                    keep.push(sr.sample);
+                }
+            }
+        }
+        for (track_i, track) in sample.arrangement.tracks.iter().enumerate() {
+            for (clip_i, clip) in track.clips.iter().enumerate() {
+                if !keep.contains(&clip.source) {
+                    keep.push(clip.source);
+                }
+                let name = lib
+                    .sample(clip.source)
+                    .map(|s| s.name.clone())
+                    .unwrap_or_default();
+                clip_sources.push(serde_json::json!({
+                    "arrangement": sample.id,
+                    "track": track_i,
+                    "clip": clip_i,
+                    "source": clip.source,
+                    "name": name,
+                }));
+            }
+        }
+    }
+
+    let samples: Vec<_> = lib
+        .samples
+        .iter()
+        .filter(|s| keep.contains(&s.id))
+        .cloned()
+        .collect();
+    let mut out = SampleLibrary {
+        root: Some(target),
+        samples,
+        listener: lib.listener.clone(),
+        ..Default::default()
+    };
+    for sample in &out.samples.clone() {
+        if let Some(b) = &sample.bounce {
+            if let Some(a) = lib.assets.buffers.iter().find(|a| a.id == b.asset) {
+                if !out.assets.buffers.iter().any(|x| x.id == a.id) {
+                    out.assets.buffers.push(a.clone());
+                }
+            }
+        }
+        for node in &sample.graph.nodes {
+            let buffer = match &node.kind {
+                NodeKind::AudioBufferSource(b) => b.buffer,
+                NodeKind::Convolver(c) => c.buffer,
+                NodeKind::AudioWorklet(w) => {
+                    if let Some(a) = w
+                        .module
+                        .and_then(|m| lib.assets.wasm_modules.iter().find(|x| x.id == m))
+                    {
+                        if !out.assets.wasm_modules.iter().any(|x| x.id == a.id) {
+                            out.assets.wasm_modules.push(a.clone());
+                        }
+                    }
+                    None
+                }
+                _ => None,
+            };
+            if let Some(a) = buffer.and_then(|b| lib.assets.buffers.iter().find(|x| x.id == b)) {
+                if !out.assets.buffers.iter().any(|x| x.id == a.id) {
+                    out.assets.buffers.push(a.clone());
+                }
+            }
+        }
+    }
+    Ok((out, clip_sources))
+}
+
 /// Recursively replace any `"$name"` string in `v` with `map["name"]` — the
 /// symbolic-id substitution behind `dispatch_refs`. A `$name` with no matching
 /// ref is left as-is (it will surface as a deserialize error downstream).
@@ -4003,6 +4929,18 @@ fn normalize_command_value(mut v: Value) -> Value {
                     if let Ok(full) = serde_json::to_value(&kind) {
                         *kind_slot = full;
                     }
+                }
+            }
+        }
+    }
+    if matches!(
+        v.get("cmd").and_then(Value::as_str),
+        Some("rename_sample" | "set_sample_notes" | "set_root")
+    ) {
+        if let Some(args) = v.get_mut("args").and_then(Value::as_object_mut) {
+            if !args.contains_key("id") {
+                if let Some(sample) = args.remove("sample") {
+                    args.insert("id".into(), sample);
                 }
             }
         }

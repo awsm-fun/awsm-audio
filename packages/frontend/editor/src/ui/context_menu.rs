@@ -146,6 +146,15 @@ fn items_for(target: ContextTarget) -> Vec<Dom> {
                 vec![menu_item_disabled("Nothing to paste")]
             }
         }
+        ContextTarget::TrackGainPoint { track, index } => {
+            vec![menu_item("Delete automation point", move || {
+                let c = controller();
+                c.dispatch(EditorCommand::EditArrange {
+                    op: crate::controller::ArrangeOp::RemoveTrackGainPoint { track, index },
+                });
+                c.close_context_menu();
+            })]
+        }
     }
 }
 

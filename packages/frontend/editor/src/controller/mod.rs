@@ -54,6 +54,31 @@ pub fn controller() -> EditorController {
 /// together — used to re-arm the song loop.
 type SongTimer = Rc<RefCell<Option<(i32, Closure<dyn FnMut()>)>>>;
 
+fn remap_connection_node_ids(
+    c: &mut awsm_audio_schema::Connection,
+    ids: &std::collections::HashMap<NodeId, NodeId>,
+) {
+    match &mut c.from {
+        awsm_audio_schema::ConnectionSource::NodeOutput { node, .. }
+        | awsm_audio_schema::ConnectionSource::SeqOut { node, .. } => {
+            if let Some(new_id) = ids.get(node) {
+                *node = *new_id;
+            }
+        }
+        awsm_audio_schema::ConnectionSource::Inlet { .. } => {}
+    }
+    match &mut c.to {
+        awsm_audio_schema::ConnectionSink::NodeInput { node, .. }
+        | awsm_audio_schema::ConnectionSink::NodeParam { node, .. }
+        | awsm_audio_schema::ConnectionSink::Trigger { node } => {
+            if let Some(new_id) = ids.get(node) {
+                *node = *new_id;
+            }
+        }
+        awsm_audio_schema::ConnectionSink::Outlet { .. } => {}
+    }
+}
+
 /// The command/query authority. Clone is cheap — all fields are shared handles.
 #[derive(Clone)]
 pub struct EditorController {
@@ -229,6 +254,8 @@ pub enum ContextTarget {
     Sound(awsm_audio_schema::SampleId),
     /// Empty lane space at `(track, secs)` (Paste here / Paste at playhead).
     Lane { track: usize, secs: f64 },
+    /// An arrangement track gain automation point.
+    TrackGainPoint { track: usize, index: usize },
 }
 
 /// A Sound's bounce state, for the assets view + sample badges.
@@ -506,12 +533,28 @@ impl EditorController {
                 return;
             };
             let mut sample = src.sample.clone();
+            let mut id_map = std::collections::HashMap::new();
+            for node in &mut sample.graph.nodes {
+                let old = node.id;
+                node.id = awsm_audio_schema::NodeId::new();
+                id_map.insert(old, node.id);
+            }
+            for c in &mut sample.graph.connections {
+                remap_connection_node_ids(c, &id_map);
+            }
+            for source in &mut sample.trigger.sources {
+                if let Some(new_id) = id_map.get(source) {
+                    *source = *new_id;
+                }
+            }
             sample.id = awsm_audio_schema::SampleId::new();
             sample.name = format!("{} (clone)", src.sample.name);
-            StoredSample {
-                sample,
-                layout: src.layout.clone(),
-            }
+            let layout = src
+                .layout
+                .iter()
+                .filter_map(|(node, pos)| id_map.get(node).map(|new_id| (*new_id, *pos)))
+                .collect();
+            StoredSample { sample, layout }
         };
         let new_id = cloned.sample.id;
         self.set_created_id(new_id);
@@ -1458,6 +1501,9 @@ impl EditorController {
             // Served on the async render branch in `remote.rs` (it renders each
             // track); this sync path is never reached for it.
             EditorQuery::ArrangementTrackStats => QueryResult::ArrangementTrackStats(Vec::new()),
+            EditorQuery::ArrangementSectionStats { .. } => {
+                QueryResult::ArrangementSectionStats(Vec::new())
+            }
             EditorQuery::Transport => QueryResult::Transport(TransportInfo {
                 playing: self.playing.get(),
                 peak: self.audio_peak(),
@@ -2802,6 +2848,59 @@ impl EditorController {
                     t.gain = gain.clamp(0.0, 4.0);
                 }
             }),
+            ArrangeOp::SetTrackGainPoints { track, mut points } => {
+                self.edit_arrange(true, |a| {
+                    if let Some(t) = a.tracks.get_mut(track) {
+                        awsm_audio_schema::normalize_gain_points(&mut points);
+                        t.gain_automation = points;
+                    }
+                });
+                self.reschedule_arrangement();
+            }
+            ArrangeOp::AddTrackGainPoint { track, point } => {
+                self.edit_arrange(true, |a| {
+                    if let Some(t) = a.tracks.get_mut(track) {
+                        t.gain_automation.push(point);
+                        awsm_audio_schema::normalize_gain_points(&mut t.gain_automation);
+                    }
+                });
+                self.reschedule_arrangement();
+            }
+            ArrangeOp::RemoveTrackGainPoint { track, index } => {
+                self.edit_arrange(true, |a| {
+                    if let Some(t) = a.tracks.get_mut(track) {
+                        if index < t.gain_automation.len() {
+                            t.gain_automation.remove(index);
+                        }
+                    }
+                });
+                self.reschedule_arrangement();
+            }
+            ArrangeOp::MoveTrackGainPoint {
+                track,
+                index,
+                time,
+                gain,
+            } => {
+                self.edit_arrange(true, |a| {
+                    if let Some(t) = a.tracks.get_mut(track) {
+                        if let Some(point) = t.gain_automation.get_mut(index) {
+                            point.time = time.max(0.0);
+                            point.gain = gain.clamp(0.0, 4.0);
+                            awsm_audio_schema::normalize_gain_points(&mut t.gain_automation);
+                        }
+                    }
+                });
+                self.reschedule_arrangement();
+            }
+            ArrangeOp::ClearTrackGainAutomation { track } => {
+                self.edit_arrange(true, |a| {
+                    if let Some(t) = a.tracks.get_mut(track) {
+                        t.gain_automation.clear();
+                    }
+                });
+                self.reschedule_arrangement();
+            }
             ArrangeOp::SetTrackMute { track, mute } => {
                 self.edit_arrange(true, |a| {
                     if let Some(t) = a.tracks.get_mut(track) {
@@ -3219,7 +3318,7 @@ impl EditorController {
         for r in &refs {
             graph_toml(*r).hash(&mut h);
         }
-        h.finish()
+        h.finish() & awsm_audio_schema::MAX_TOML_U64
     }
 
     /// A Sound's bounce state (never / clean / stale).
@@ -3634,6 +3733,74 @@ impl EditorController {
                 peak,
                 rms,
                 clips: track.clips.len(),
+            });
+        }
+        Ok(out)
+    }
+
+    /// Peak/rms/readback stats for arrangement time ranges. If `sections` is
+    /// empty, use the arrangement's saved sections; if those are empty too, use
+    /// the effective export/playback range.
+    pub async fn arrangement_section_stats(
+        &self,
+        sections: Vec<awsm_audio_schema::ArrSection>,
+    ) -> Result<Vec<awsm_audio_editor_protocol::SectionStats>, String> {
+        use awsm_audio_editor_protocol::{SectionStats, WavStats};
+        self.commit_active();
+        let id = *self.active.borrow();
+        let arr = self
+            .arrangement_for(id)
+            .ok_or_else(|| "active sample is not an arrangement".to_string())?;
+        let ranges = if !sections.is_empty() {
+            sections
+        } else if !arr.sections.is_empty() {
+            arr.sections.clone()
+        } else {
+            let (start, end) = arr.range();
+            vec![awsm_audio_schema::ArrSection {
+                name: "range".into(),
+                start,
+                end,
+            }]
+        };
+        if !self.ensure_player() {
+            return Err("audio player unavailable".into());
+        }
+        let (buffers, sr) = {
+            let p = self.player.borrow();
+            let p = p
+                .as_ref()
+                .ok_or_else(|| "audio player unavailable".to_string())?;
+            (p.clip_buffers(), p.sample_rate() as f32)
+        };
+        let lib = self.to_library();
+        let mut out = Vec::with_capacity(ranges.len());
+        for section in ranges {
+            let start = section.start.clamp(0.0, arr.length_secs);
+            let end = section.end.clamp(0.0, arr.length_secs);
+            if end <= start {
+                continue;
+            }
+            let clips = awsm_audio_player::document::audio_clip_parts(&lib, id, start);
+            let duration = (end - start).max(0.05);
+            let stats = if clips.is_empty() {
+                WavStats::from_pcm(&[], sr as u32)
+            } else {
+                let (channels, rate) =
+                    awsm_audio_player::bounce::render_clips(clips, buffers.clone(), sr, duration)
+                        .await
+                        .map_err(|e| format!("{e}"))?;
+                WavStats::from_pcm(&channels, rate)
+            };
+            out.push(SectionStats {
+                name: section.name,
+                start,
+                end,
+                peak: stats.peak,
+                rms: stats.rms,
+                clipping: stats.clipping,
+                spectral_centroid_hz: stats.spectral_centroid_hz,
+                brightness: stats.brightness,
             });
         }
         Ok(out)
@@ -4698,6 +4865,11 @@ impl EditorController {
     pub fn open_lane_menu(&self, track: usize, secs: f64, x: f64, y: f64) {
         self.context_menu
             .set(Some((ContextTarget::Lane { track, secs }, x, y)));
+    }
+    /// Open the context menu on an arrangement track gain automation point.
+    pub fn open_track_gain_point_menu(&self, track: usize, index: usize, x: f64, y: f64) {
+        self.context_menu
+            .set(Some((ContextTarget::TrackGainPoint { track, index }, x, y)));
     }
     pub fn close_context_menu(&self) {
         self.context_menu.set(None);

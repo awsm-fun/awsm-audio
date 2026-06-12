@@ -10,8 +10,8 @@
 use serde::{Deserialize, Serialize};
 
 use awsm_audio_schema::{
-    AutomationEvent, Clip, ControlPoint, Curve, NodeId, NodeKind, NoteEvent, ParamId, SampleId,
-    SampleKind,
+    AutomationEvent, Clip, ControlPoint, Curve, GainPoint, NodeId, NodeKind, NoteEvent, ParamId,
+    SampleId, SampleKind,
 };
 
 use crate::clipboard::Clipboard;
@@ -280,6 +280,32 @@ pub enum ArrangeOp {
     SetTrackGain {
         track: usize,
         gain: f32,
+    },
+    /// Replace the track's arrangement-level gain automation points.
+    SetTrackGainPoints {
+        track: usize,
+        points: Vec<GainPoint>,
+    },
+    /// Add or replace one gain automation point on a track.
+    AddTrackGainPoint {
+        track: usize,
+        point: GainPoint,
+    },
+    /// Remove one gain automation point by index.
+    RemoveTrackGainPoint {
+        track: usize,
+        index: usize,
+    },
+    /// Move/update one gain automation point by index.
+    MoveTrackGainPoint {
+        track: usize,
+        index: usize,
+        time: f64,
+        gain: f32,
+    },
+    /// Clear every gain automation point on a track.
+    ClearTrackGainAutomation {
+        track: usize,
     },
     SetTrackMute {
         track: usize,

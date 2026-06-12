@@ -23,7 +23,7 @@ pub use field::FieldValue;
 pub use node::{BoundaryPort, ConnId, ConnSink};
 pub use query::{
     AssetInfo, EditorQuery, FieldInfo, ModTargetInfo, NodeKindInfo, QueryResult, RenderPlanInfo,
-    SampleInfo, TrackStats, TransportInfo, WavStats, WaveformEnvelope,
+    SampleInfo, SectionStats, TrackStats, TransportInfo, WavStats, WaveformEnvelope,
 };
 pub use snapshot::{EditorProject, EditorSnapshot, NodeLayout};
 pub use transport::{

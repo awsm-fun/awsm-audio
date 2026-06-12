@@ -458,11 +458,36 @@ pub fn audio_clip_parts(lib: &SampleLibrary, id: SampleId, seek: f64) -> Vec<Aud
                 offset: clip.offset + lead * speed,
                 length: (clip.length - lead).max(0.0),
                 gain: clip.gain * track.gain,
+                gain_curve: clip_gain_curve(track, clip, seek),
                 looping: clip.looping,
                 speed,
             });
         }
     }
+    out
+}
+
+fn clip_gain_curve(
+    track: &awsm_audio_schema::ArrTrack,
+    clip: &awsm_audio_schema::Clip,
+    seek: f64,
+) -> Vec<(f64, f32)> {
+    if track.gain_automation.is_empty() {
+        return Vec::new();
+    }
+    let abs_start = clip.start.max(seek);
+    let abs_end = clip.start + clip.length;
+    if abs_end <= abs_start {
+        return Vec::new();
+    }
+    let base = clip.gain * track.gain;
+    let mut out = vec![(0.0, base * track.gain_at(abs_start))];
+    for p in &track.gain_automation {
+        if p.time > abs_start && p.time < abs_end {
+            out.push((p.time - abs_start, base * p.gain));
+        }
+    }
+    out.push((abs_end - abs_start, base * track.gain_at(abs_end)));
     out
 }
 

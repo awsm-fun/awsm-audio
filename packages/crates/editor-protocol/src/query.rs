@@ -36,6 +36,11 @@ pub enum EditorQuery {
     /// Per-track peak/rms of the active arrangement, each rendered in isolation
     /// (solo) — so an agent can see which stem is hot without rescaling blindly.
     ArrangementTrackStats,
+    /// Peak/rms/stats of arrangement sections over explicit or saved ranges.
+    ArrangementSectionStats {
+        #[serde(default)]
+        sections: Vec<awsm_audio_schema::ArrSection>,
+    },
     /// Live transport state (playing / peak / playhead / audio-context state).
     Transport,
     /// Cheap numeric stats of a Sound. `bounced = false` (default) renders the
@@ -89,6 +94,7 @@ pub enum QueryResult {
     RenderPlan(RenderPlanInfo),
     Arrangement(Option<Arrangement>),
     ArrangementTrackStats(Vec<TrackStats>),
+    ArrangementSectionStats(Vec<SectionStats>),
     Transport(TransportInfo),
     WavStats(WavStats),
     Waveform(WaveformEnvelope),
@@ -227,6 +233,20 @@ pub struct TrackStats {
     pub clips: usize,
 }
 
+/// Loudness/readback stats for one arrangement time range.
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SectionStats {
+    pub name: String,
+    pub start: f64,
+    pub end: f64,
+    pub peak: f32,
+    pub rms: f32,
+    pub clipping: bool,
+    pub spectral_centroid_hz: f32,
+    pub brightness: f32,
+}
+
 #[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransportInfo {
@@ -276,6 +296,14 @@ pub struct WavStats {
     /// not an ITU-R BS.1770 measurement.
     #[serde(default)]
     pub true_peak: f32,
+    /// Approximate spectral centroid in Hz from a short mono analysis window.
+    /// Higher values generally read as brighter.
+    #[serde(default)]
+    pub spectral_centroid_hz: f32,
+    /// Fraction of analyzed spectral energy above 4 kHz. A rough brightness
+    /// readback, not a mastering-grade measurement.
+    #[serde(default)]
+    pub brightness: f32,
 }
 
 /// The -60 dBFS amplitude floor for the silence / attack / decay readbacks
@@ -361,6 +389,7 @@ impl WavStats {
                 }
             }
         }
+        let (spectral_centroid_hz, brightness) = spectral_summary(channels, sample_rate);
         let (leading_silence_secs, trailing_silence_secs, attack_secs, decay_secs) =
             match (first_loud, last_loud, peak_at) {
                 (Some(first), Some(last), Some(at)) => (
@@ -387,7 +416,54 @@ impl WavStats {
             attack_secs,
             decay_secs,
             true_peak,
+            spectral_centroid_hz,
+            brightness,
         }
+    }
+}
+
+fn spectral_summary(channels: &[Vec<f32>], sample_rate: u32) -> (f32, f32) {
+    let frames = channels.iter().map(|c| c.len()).max().unwrap_or(0);
+    if frames == 0 || sample_rate == 0 {
+        return (0.0, 0.0);
+    }
+    let n = frames.min(2048);
+    if n < 16 {
+        return (0.0, 0.0);
+    }
+    let ch_count = channels.len().max(1) as f32;
+    let mut mono = vec![0.0f32; n];
+    for (i, slot) in mono.iter_mut().enumerate() {
+        let s: f32 = channels
+            .iter()
+            .map(|c| c.get(i).copied().unwrap_or(0.0))
+            .sum();
+        let w = 0.5 - 0.5 * (std::f32::consts::TAU * i as f32 / (n - 1) as f32).cos();
+        *slot = (s / ch_count) * w;
+    }
+    let mut weighted = 0.0f64;
+    let mut total = 0.0f64;
+    let mut bright = 0.0f64;
+    for k in 1..(n / 2) {
+        let freq = k as f64 * sample_rate as f64 / n as f64;
+        let mut re = 0.0f64;
+        let mut im = 0.0f64;
+        for (i, &x) in mono.iter().enumerate() {
+            let phase = std::f64::consts::TAU * k as f64 * i as f64 / n as f64;
+            re += x as f64 * phase.cos();
+            im -= x as f64 * phase.sin();
+        }
+        let mag = (re * re + im * im).sqrt();
+        weighted += freq * mag;
+        total += mag;
+        if freq >= 4000.0 {
+            bright += mag;
+        }
+    }
+    if total <= f64::EPSILON {
+        (0.0, 0.0)
+    } else {
+        ((weighted / total) as f32, (bright / total) as f32)
     }
 }
 

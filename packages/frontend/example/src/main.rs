@@ -435,6 +435,7 @@ fn arrangement_demo() -> (SampleLibrary, SampleId) {
         gain: 1.0,
         mute: false,
         solo: false,
+        gain_automation: Vec::new(),
         clips,
     });
 

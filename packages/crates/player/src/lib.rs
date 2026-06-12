@@ -99,6 +99,9 @@ pub struct AudioClipPart {
     pub offset: f64,
     pub length: f64,
     pub gain: f32,
+    /// Gain automation points relative to this clip part's audible start:
+    /// `(seconds_from_part_start, absolute_linear_gain)`.
+    pub gain_curve: Vec<(f64, f32)>,
     pub looping: bool,
     /// Playback rate (1.0 = normal). The clip occupies `length` seconds on the
     /// timeline but consumes `length * speed` seconds of buffer.
@@ -279,6 +282,25 @@ fn apply_control(
             }
             prev = Some((t, v));
         }
+    }
+}
+
+fn apply_clip_gain_curve(
+    param: &web_sys::AudioParam,
+    fallback: f32,
+    points: &[(f64, f32)],
+    at: f64,
+) {
+    if points.is_empty() {
+        param.set_value(fallback);
+        return;
+    }
+    let mut pts = points.to_vec();
+    pts.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+    let (t0, v0) = pts[0];
+    let _ = param.set_value_at_time(v0, at + t0.max(0.0));
+    for (secs, gain) in pts.into_iter().skip(1) {
+        let _ = param.linear_ramp_to_value_at_time(gain, at + secs.max(0.0));
     }
 }
 
@@ -589,7 +611,7 @@ impl Player {
             let stretched = c.looping && span > (buf_dur - off) + 1e-3;
 
             let (src, g) = self.new_clip_source(&buf)?;
-            g.gain().set_value(c.gain);
+            apply_clip_gain_curve(&g.gain(), c.gain, &c.gain_curve, when);
             if (speed - 1.0).abs() > 1e-6 {
                 src.playback_rate().set_value(speed as f32);
             }
