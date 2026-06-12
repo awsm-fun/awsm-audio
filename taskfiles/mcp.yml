@@ -24,3 +24,9 @@ tasks:
     cmds:
       - cargo install --path {{.PATH_PACKAGES}}/mcp --bin awsm-audio-mcp --force
       - 'echo "Installed awsm-audio-mcp to ~/.cargo/bin. Run it from anywhere — bare awsm-audio-mcp uses the default port {{.PORT_MCP_HTTP_DEV}}."'
+
+  e2e:
+    desc: "Browser e2e for the MCP ⇄ editor loop (needs `task mcp-dev` running + Chrome installed; `npm install` once in the e2e dir)."
+    dir: "{{.PATH_PACKAGES}}/mcp/tests/e2e"
+    cmds:
+      - npm run e2e
