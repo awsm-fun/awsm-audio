@@ -195,9 +195,10 @@ fn cards() -> Vec<Card> {
             let tags = node_tags(&lib);
             let title = display_name(&lib).unwrap_or_else(|| key.to_string());
             let worklet = tags.contains(&WORKLET_TAG);
-            // A "song" = anything driven by a sequencer node (Melodic or Drum).
-            // Detect by node kind, not label, so renamed labels can't break it.
-            let song = has_sequencer(&lib);
+            // A "song" = anything driven by a sequencer node, or any current
+            // DAW-style arrangement. Detect by data, not label, so renamed
+            // examples cannot break the sectioning.
+            let song = has_sequencer(&lib) || has_arrangement(&lib);
             Card {
                 key: key.to_string(),
                 title,
@@ -238,6 +239,12 @@ fn has_sequencer(lib: &SampleLibrary) -> bool {
             .iter()
             .any(|n| matches!(n.kind, NodeKind::NoteSequencer(_)))
     })
+}
+
+fn has_arrangement(lib: &SampleLibrary) -> bool {
+    lib.samples
+        .iter()
+        .any(|s| s.kind == awsm_audio_schema::SampleKind::Arrangement)
 }
 
 fn root_sample(lib: &SampleLibrary) -> Option<&awsm_audio_schema::Sample> {

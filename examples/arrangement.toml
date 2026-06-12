@@ -1,8 +1,8 @@
 version = 1
-root = "e88d7a70-f791-4ecb-a062-8bdcd53ad554"
+root = "fa42a602-e7c1-4e5c-aaeb-cacdb01a525a"
 
 [[samples]]
-id = "e88d7a70-f791-4ecb-a062-8bdcd53ad554"
+id = "fa42a602-e7c1-4e5c-aaeb-cacdb01a525a"
 name = "Arrangement"
 kind = "arrangement"
 
@@ -13,202 +13,126 @@ release = 0.0
 
 [samples.arrangement]
 bpm = 110.0
-length_bars = 2
+length_secs = 8.0
+loop_start = 0.0
+loop_end = 8.0
 
 [[samples.arrangement.tracks]]
 name = "Bass"
-instrument = "d9ba1979-87d5-43d2-9114-3f715d35d53a"
+gain = 0.949999988079071
+
+[[samples.arrangement.tracks.gain_automation]]
+time = 0.0
+gain = 1.0
+
+[[samples.arrangement.tracks.gain_automation]]
+time = 4.0
+gain = 0.7200000286102295
+
+[[samples.arrangement.tracks.gain_automation]]
+time = 6.0
+gain = 0.7200000286102295
+
+[[samples.arrangement.tracks.gain_automation]]
+time = 8.0
+gain = 1.0
 
 [[samples.arrangement.tracks.clips]]
 start = 0.0
 length = 4.0
+source = "c82c6c8a-1d07-4b31-924e-f1401f98c356"
+offset = 0.0
+gain = 1.0
+looping = true
 name = "bass A"
 
-[[samples.arrangement.tracks.clips.notes]]
-start = 0.0
-length = 0.9
-note = 36
-velocity = 110
-
-[[samples.arrangement.tracks.clips.notes]]
-start = 1.0
-length = 0.45
-note = 36
-velocity = 90
-
-[[samples.arrangement.tracks.clips.notes]]
-start = 1.5
-length = 0.45
-note = 43
-velocity = 90
-
-[[samples.arrangement.tracks.clips.notes]]
-start = 2.0
-length = 0.9
-note = 41
-velocity = 100
-
-[[samples.arrangement.tracks.clips.notes]]
-start = 3.0
-length = 0.9
-note = 39
-velocity = 90
-
 [[samples.arrangement.tracks.clips]]
 start = 4.0
 length = 4.0
+source = "c82c6c8a-1d07-4b31-924e-f1401f98c356"
+offset = 0.0
+gain = 0.800000011920929
+looping = true
 name = "bass B"
 
-[[samples.arrangement.tracks.clips.notes]]
-start = 0.0
-length = 0.9
-note = 36
-velocity = 110
-
-[[samples.arrangement.tracks.clips.notes]]
-start = 1.0
-length = 0.45
-note = 36
-velocity = 90
-
-[[samples.arrangement.tracks.clips.notes]]
-start = 1.5
-length = 0.45
-note = 43
-velocity = 90
-
-[[samples.arrangement.tracks.clips.notes]]
-start = 2.0
-length = 0.9
-note = 41
-velocity = 100
-
-[[samples.arrangement.tracks.clips.notes]]
-start = 3.0
-length = 0.9
-note = 31
-velocity = 95
-
 [[samples.arrangement.tracks]]
-name = "Drums"
-instrument = "aa23af13-f3f5-40ce-90f9-c5e2b7f8e05a"
-is_drum = true
+name = "Kick"
+gain = 0.8999999761581421
 
 [[samples.arrangement.tracks.clips]]
 start = 0.0
-length = 8.0
+length = 0.5
+source = "92558f4a-d454-4655-9b5e-dcc990597a79"
+offset = 0.0
+gain = 1.0
 name = "kick"
 
-[[samples.arrangement.tracks.clips.notes]]
-start = 0.0
-length = 0.25
-note = 36
-velocity = 110
-
-[[samples.arrangement.tracks.clips.notes]]
+[[samples.arrangement.tracks.clips]]
 start = 1.0
-length = 0.25
-note = 36
-velocity = 110
+length = 0.5
+source = "92558f4a-d454-4655-9b5e-dcc990597a79"
+offset = 0.0
+gain = 1.0
 
-[[samples.arrangement.tracks.clips.notes]]
+[[samples.arrangement.tracks.clips]]
 start = 2.0
-length = 0.25
-note = 36
-velocity = 110
+length = 0.5
+source = "92558f4a-d454-4655-9b5e-dcc990597a79"
+offset = 0.0
+gain = 1.0
 
-[[samples.arrangement.tracks.clips.notes]]
+[[samples.arrangement.tracks.clips]]
 start = 3.0
-length = 0.25
-note = 36
-velocity = 110
+length = 0.5
+source = "92558f4a-d454-4655-9b5e-dcc990597a79"
+offset = 0.0
+gain = 1.0
 
-[[samples.arrangement.tracks.clips.notes]]
+[[samples.arrangement.tracks.clips]]
 start = 4.0
-length = 0.25
-note = 36
-velocity = 110
+length = 0.5
+source = "92558f4a-d454-4655-9b5e-dcc990597a79"
+offset = 0.0
+gain = 1.0
 
-[[samples.arrangement.tracks.clips.notes]]
+[[samples.arrangement.tracks.clips]]
 start = 5.0
-length = 0.25
-note = 36
-velocity = 110
+length = 0.5
+source = "92558f4a-d454-4655-9b5e-dcc990597a79"
+offset = 0.0
+gain = 1.0
 
-[[samples.arrangement.tracks.clips.notes]]
+[[samples.arrangement.tracks.clips]]
 start = 6.0
-length = 0.25
-note = 36
-velocity = 110
+length = 0.5
+source = "92558f4a-d454-4655-9b5e-dcc990597a79"
+offset = 0.0
+gain = 1.0
 
-[[samples.arrangement.tracks.clips.notes]]
+[[samples.arrangement.tracks.clips]]
 start = 7.0
-length = 0.25
-note = 36
-velocity = 110
+length = 0.5
+source = "92558f4a-d454-4655-9b5e-dcc990597a79"
+offset = 0.0
+gain = 1.0
 
-[[samples.arrangement.tracks]]
-name = "Pad"
-instrument = "a48564ba-6dc0-4595-8b12-94c8b47cc3c1"
-
-[[samples.arrangement.tracks.clips]]
+[[samples.arrangement.sections]]
+name = "A"
 start = 0.0
-length = 8.0
-name = "chords"
+end = 4.0
 
-[[samples.arrangement.tracks.clips.notes]]
-start = 0.0
-length = 3.8
-note = 48
-velocity = 70
-
-[[samples.arrangement.tracks.clips.notes]]
-start = 0.0
-length = 3.8
-note = 51
-velocity = 65
-
-[[samples.arrangement.tracks.clips.notes]]
-start = 0.0
-length = 3.8
-note = 55
-velocity = 65
-
-[[samples.arrangement.tracks.clips.notes]]
+[[samples.arrangement.sections]]
+name = "B"
 start = 4.0
-length = 3.8
-note = 44
-velocity = 70
-
-[[samples.arrangement.tracks.clips.notes]]
-start = 4.0
-length = 3.8
-note = 48
-velocity = 65
-
-[[samples.arrangement.tracks.clips.notes]]
-start = 4.0
-length = 3.8
-note = 51
-velocity = 65
-
-[[samples.arrangement.tracks]]
-name = "Riff"
-instrument = "800324fb-e10f-421c-bec8-b987ab7d9d73"
-
-[[samples.arrangement.tracks.clips]]
-start = 0.0
-length = 4.0
-name = "Riff"
-pattern = "800324fb-e10f-421c-bec8-b987ab7d9d73"
+end = 8.0
 
 [[samples]]
-id = "d9ba1979-87d5-43d2-9114-3f715d35d53a"
+id = "c82c6c8a-1d07-4b31-924e-f1401f98c356"
 name = "Bass"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "dfbcbb71-8412-4295-b4d0-edb78c4f57a1"
+id = "07875b2c-68c9-4c58-b530-4222d95547c2"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -217,13 +141,13 @@ kind = "oscillator"
 type = "sawtooth"
 
 [samples.graph.nodes.kind.props.frequency]
-value = 261.6300048828125
+value = 110.0
 
 [samples.graph.nodes.kind.props.detune]
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "636c2003-a0ca-4f0f-a8c6-b97e641babb8"
+id = "8609b81b-de7e-498e-ba77-d24cdac5a063"
 
 [samples.graph.nodes.kind]
 kind = "biquad_filter"
@@ -244,7 +168,7 @@ value = 4.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "e8f2e252-aa0b-40ad-a4eb-f9b482b1c5bf"
+id = "89fbec55-d1d8-4e5c-a4c3-b03e1ec0000f"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -271,42 +195,42 @@ event = "exponential_ramp"
 
 [samples.graph.nodes.kind.props.gain.automation.args]
 value = 0.00009999999747378752
-time = 0.355
+time = 0.405
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "dfbcbb71-8412-4295-b4d0-edb78c4f57a1"
+node = "07875b2c-68c9-4c58-b530-4222d95547c2"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "636c2003-a0ca-4f0f-a8c6-b97e641babb8"
+node = "8609b81b-de7e-498e-ba77-d24cdac5a063"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "636c2003-a0ca-4f0f-a8c6-b97e641babb8"
+node = "8609b81b-de7e-498e-ba77-d24cdac5a063"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "e8f2e252-aa0b-40ad-a4eb-f9b482b1c5bf"
+node = "89fbec55-d1d8-4e5c-a4c3-b03e1ec0000f"
 input = 0
 
 [samples.trigger]
 release = 0.0
 
 [[samples]]
-id = "aa23af13-f3f5-40ce-90f9-c5e2b7f8e05a"
+id = "92558f4a-d454-4655-9b5e-dcc990597a79"
 name = "Kick"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "38f7146c-b15d-4dc0-aa76-d3a694236bd9"
+id = "c11d81e5-6725-48b0-bc03-9d8777c1cb07"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -335,7 +259,7 @@ time = 0.12
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "75d00237-206a-4aa4-8a4e-3083b59b8a38"
+id = "d6f53568-0eae-4941-b8e5-1be349f5293c"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -368,214 +292,12 @@ time = 0.28200000000000003
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "38f7146c-b15d-4dc0-aa76-d3a694236bd9"
+node = "c11d81e5-6725-48b0-bc03-9d8777c1cb07"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "75d00237-206a-4aa4-8a4e-3083b59b8a38"
-input = 0
-
-[samples.trigger]
-release = 0.0
-
-[[samples]]
-id = "a48564ba-6dc0-4595-8b12-94c8b47cc3c1"
-name = "Pad"
-kind = "sound"
-
-[[samples.graph.nodes]]
-id = "769db583-505a-4633-89bd-36c1976ca341"
-
-[samples.graph.nodes.kind]
-kind = "oscillator"
-
-[samples.graph.nodes.kind.props]
-type = "sawtooth"
-
-[samples.graph.nodes.kind.props.frequency]
-value = 261.6300048828125
-
-[samples.graph.nodes.kind.props.detune]
-value = 0.0
-
-[[samples.graph.nodes]]
-id = "9e8fdf33-a890-4039-b1d0-5c407ab43ebf"
-
-[samples.graph.nodes.kind]
-kind = "biquad_filter"
-
-[samples.graph.nodes.kind.props]
-type = "lowpass"
-
-[samples.graph.nodes.kind.props.frequency]
-value = 1200.0
-
-[samples.graph.nodes.kind.props.detune]
-value = 0.0
-
-[samples.graph.nodes.kind.props.Q]
-value = 1.0
-
-[samples.graph.nodes.kind.props.gain]
-value = 0.0
-
-[[samples.graph.nodes]]
-id = "1f9ba334-e691-4d09-9ba1-ea0eca715490"
-
-[samples.graph.nodes.kind]
-kind = "gain"
-
-[samples.graph.nodes.kind.props.gain]
-value = 0.00009999999747378752
-
-[[samples.graph.nodes.kind.props.gain.automation]]
-event = "set_value"
-
-[samples.graph.nodes.kind.props.gain.automation.args]
-value = 0.00009999999747378752
-time = 0.0
-
-[[samples.graph.nodes.kind.props.gain.automation]]
-event = "exponential_ramp"
-
-[samples.graph.nodes.kind.props.gain.automation.args]
-value = 0.44999998807907104
-time = 0.03
-
-[[samples.graph.nodes.kind.props.gain.automation]]
-event = "exponential_ramp"
-
-[samples.graph.nodes.kind.props.gain.automation.args]
-value = 0.00009999999747378752
-time = 1.43
-
-[[samples.graph.connections]]
-
-[samples.graph.connections.from]
-from = "node_output"
-node = "769db583-505a-4633-89bd-36c1976ca341"
-output = 0
-
-[samples.graph.connections.to]
-to = "node_input"
-node = "9e8fdf33-a890-4039-b1d0-5c407ab43ebf"
-input = 0
-
-[[samples.graph.connections]]
-
-[samples.graph.connections.from]
-from = "node_output"
-node = "9e8fdf33-a890-4039-b1d0-5c407ab43ebf"
-output = 0
-
-[samples.graph.connections.to]
-to = "node_input"
-node = "1f9ba334-e691-4d09-9ba1-ea0eca715490"
-input = 0
-
-[samples.trigger]
-release = 0.0
-
-[[samples]]
-id = "800324fb-e10f-421c-bec8-b987ab7d9d73"
-name = "Riff"
-kind = "sound"
-
-[[samples.graph.nodes]]
-id = "0ce2eb9b-a86d-43e5-88b3-db672d00b4c6"
-
-[samples.graph.nodes.kind]
-kind = "note_sequencer"
-
-[samples.graph.nodes.kind.props.song]
-bpm = 110.0
-
-[[samples.graph.nodes.kind.props.song.tracks]]
-name = "Lead"
-channel = 0
-
-[[samples.graph.nodes.kind.props.song.tracks.events]]
-start = 0.0
-length = 0.45
-note = 60
-velocity = 100
-
-[[samples.graph.nodes.kind.props.song.tracks.events]]
-start = 0.5
-length = 0.45
-note = 63
-velocity = 95
-
-[[samples.graph.nodes.kind.props.song.tracks.events]]
-start = 1.0
-length = 0.45
-note = 67
-velocity = 100
-
-[[samples.graph.nodes.kind.props.song.tracks.events]]
-start = 1.5
-length = 0.9
-note = 70
-velocity = 95
-
-[[samples.graph.nodes.kind.props.song.tracks.events]]
-start = 2.5
-length = 0.45
-note = 67
-velocity = 90
-
-[[samples.graph.nodes.kind.props.song.tracks.events]]
-start = 3.0
-length = 0.9
-note = 63
-velocity = 90
-
-[[samples.graph.nodes.kind.props.outputs]]
-key = "t0"
-track = 0
-label = "Lead"
-gain = 0.800000011920929
-
-[[samples.graph.nodes]]
-id = "96b13760-b95c-4f42-aaf2-d105f64e37df"
-
-[samples.graph.nodes.kind]
-kind = "sample"
-
-[samples.graph.nodes.kind.props]
-sample = "a48564ba-6dc0-4595-8b12-94c8b47cc3c1"
-
-[[samples.graph.nodes]]
-id = "aa1864b9-44ab-4847-a4ce-9d0138211404"
-
-[samples.graph.nodes.kind]
-kind = "output"
-
-[samples.graph.nodes.kind.props.gain]
-value = 1.0
-
-[[samples.graph.connections]]
-
-[samples.graph.connections.from]
-from = "seq_out"
-node = "0ce2eb9b-a86d-43e5-88b3-db672d00b4c6"
-key = "t0"
-
-[samples.graph.connections.to]
-to = "trigger"
-node = "96b13760-b95c-4f42-aaf2-d105f64e37df"
-
-[[samples.graph.connections]]
-
-[samples.graph.connections.from]
-from = "node_output"
-node = "96b13760-b95c-4f42-aaf2-d105f64e37df"
-output = 0
-
-[samples.graph.connections.to]
-to = "node_input"
-node = "aa1864b9-44ab-4847-a4ce-9d0138211404"
+node = "d6f53568-0eae-4941-b8e5-1be349f5293c"
 input = 0
 
 [samples.trigger]

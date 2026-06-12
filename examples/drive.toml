@@ -1,13 +1,13 @@
 version = 1
-root = "6b3f7aff-f1e5-4721-a0e4-f95f384c2313"
+root = "6a77db96-c319-4800-a39d-1681c95276a7"
 
 [[samples]]
-id = "6b3f7aff-f1e5-4721-a0e4-f95f384c2313"
+id = "6a77db96-c319-4800-a39d-1681c95276a7"
 name = "Drive"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "1419acee-e1ea-42cc-8cee-9999c52ce7f8"
+id = "e3de3203-03aa-469a-9f6c-cf0cbe487835"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -22,7 +22,7 @@ value = 110.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "b3b6a5a3-2285-4387-903b-0a9a912177f1"
+id = "1b782738-a673-4f27-b8d8-080925a3ec72"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -37,7 +37,7 @@ value = 110.0
 value = 11.0
 
 [[samples.graph.nodes]]
-id = "cb6e90b2-8495-437a-9cc8-596e60caa371"
+id = "acbd44af-d0c9-4420-badc-85da312c5cd9"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -46,13 +46,13 @@ kind = "gain"
 value = 0.5
 
 [[samples.graph.nodes]]
-id = "de506a17-9710-47c0-9c51-fab2e88a806f"
+id = "6d60d450-bbac-44fd-9490-5b4461ccef1d"
 
 [samples.graph.nodes.kind]
 kind = "audio_worklet"
 
 [samples.graph.nodes.kind.props]
-module = "80050752-fc29-4882-975b-3bd972184dbf"
+module = "9ebf2eb7-ba5c-4807-956d-311f3413b66b"
 processor_name = "drive"
 
 [[samples.graph.nodes.kind.props.parameters]]
@@ -80,7 +80,7 @@ max = 1.0
 value = 0.6000000238418579
 
 [[samples.graph.nodes]]
-id = "11248dda-c59a-496c-aa63-1bd284ade52f"
+id = "b5e430c3-c21e-4017-ba26-28f2e600e8c1"
 
 [samples.graph.nodes.kind]
 kind = "biquad_filter"
@@ -101,7 +101,7 @@ value = 0.800000011920929
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "aaf75ffc-e232-4b1f-b588-b34dce86f407"
+id = "724faebd-fc79-47db-a5e0-95e28909e40d"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -134,67 +134,67 @@ time = 1.41
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "1419acee-e1ea-42cc-8cee-9999c52ce7f8"
+node = "e3de3203-03aa-469a-9f6c-cf0cbe487835"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "cb6e90b2-8495-437a-9cc8-596e60caa371"
+node = "acbd44af-d0c9-4420-badc-85da312c5cd9"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "b3b6a5a3-2285-4387-903b-0a9a912177f1"
+node = "1b782738-a673-4f27-b8d8-080925a3ec72"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "cb6e90b2-8495-437a-9cc8-596e60caa371"
+node = "acbd44af-d0c9-4420-badc-85da312c5cd9"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "cb6e90b2-8495-437a-9cc8-596e60caa371"
+node = "acbd44af-d0c9-4420-badc-85da312c5cd9"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "de506a17-9710-47c0-9c51-fab2e88a806f"
+node = "6d60d450-bbac-44fd-9490-5b4461ccef1d"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "de506a17-9710-47c0-9c51-fab2e88a806f"
+node = "6d60d450-bbac-44fd-9490-5b4461ccef1d"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "11248dda-c59a-496c-aa63-1bd284ade52f"
+node = "b5e430c3-c21e-4017-ba26-28f2e600e8c1"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "11248dda-c59a-496c-aa63-1bd284ade52f"
+node = "b5e430c3-c21e-4017-ba26-28f2e600e8c1"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "aaf75ffc-e232-4b1f-b588-b34dce86f407"
+node = "724faebd-fc79-47db-a5e0-95e28909e40d"
 input = 0
 
 [samples.trigger]
 release = 0.0
 
 [[assets.wasm_modules]]
-id = "80050752-fc29-4882-975b-3bd972184dbf"
+id = "9ebf2eb7-ba5c-4807-956d-311f3413b66b"
 label = "drive"
 
 [assets.wasm_modules.source]

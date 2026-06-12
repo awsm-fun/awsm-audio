@@ -1,7 +1,7 @@
 //! Reference sound-design compositions, built from the schema. These double as
 //! the editor's "Examples" menu and as the `examples/*.toml` files (generated
 //! by the `generate_example_files` test). Each returns a one-sample
-//! [`SampleLibrary`] whose terminal nodes the player routes to the speakers.
+//! [`SampleLibrary`] that the player can route to the speakers.
 //!
 //! They lean on automation (envelopes / sweeps) and the [`NoiseNode`] to cover
 //! a range: a tonal additive bell, layered-noise rain & fire, a pitch-swept
@@ -32,6 +32,29 @@ pub fn all() -> Vec<(&'static str, SampleLibrary)> {
         ("song", song()),
         ("arrangement", arrangement()),
     ]
+}
+
+/// Full project-directory examples bundled as `project.toml` plus path-backed
+/// assets under `examples/<key>/assets`.
+pub fn project_toml(key: &str) -> Option<&'static str> {
+    match key {
+        "arrangement" => Some(include_str!(
+            "../../../../examples/arrangement/project.toml"
+        )),
+        "song" => Some(include_str!(
+            "../../../../examples/sequenced-song/project.toml"
+        )),
+        _ => None,
+    }
+}
+
+/// Base path for bundled project assets, relative to the deployed editor root.
+pub fn project_asset_base(key: &str) -> Option<&'static str> {
+    match key {
+        "arrangement" => Some("examples/arrangement"),
+        "song" => Some("examples/sequenced-song"),
+        _ => None,
+    }
 }
 
 // ======================================================================
@@ -1202,9 +1225,9 @@ fn song() -> SampleLibrary {
         ..Default::default()
     });
 
-    // --- The arrangement (a Sequence sample): sequencer + 4 instrument-refs →
+    // --- The sequenced loop sample: sequencer + 4 instrument-refs →
     // bus → output, with one keyed trigger wire per sound. ---
-    let mut arr = Sample::new("Sequenced Song");
+    let mut arr = Sample::new("Sequenced Loop");
     let seq_mel = arr.graph.push_node(Node::new(mel_node));
     let seq_drum = arr.graph.push_node(Node::new(drum_node));
     let r = |arr: &mut Sample, id| {
@@ -1246,9 +1269,86 @@ fn song() -> SampleLibrary {
     }
     arr.graph.connect(Connection::node_to_node(bus, out));
 
+    let loop_source = arr.id;
+
+    let mut timeline = Sample::new_arrangement("Sequenced Song");
+    timeline.arrangement.bpm = 110.0;
+    timeline.arrangement.length_secs = 16.0;
+    timeline.arrangement.loop_start = Some(0.0);
+    timeline.arrangement.loop_end = Some(16.0);
+    timeline.arrangement.sections = vec![
+        ArrSection {
+            name: "A".into(),
+            start: 0.0,
+            end: 8.0,
+        },
+        ArrSection {
+            name: "B breakdown".into(),
+            start: 8.0,
+            end: 16.0,
+        },
+    ];
+    timeline.arrangement.tracks.push(ArrTrack {
+        name: "Sequenced loop".into(),
+        gain: 1.0,
+        gain_automation: vec![
+            GainPoint {
+                time: 0.0,
+                gain: 1.0,
+            },
+            GainPoint {
+                time: 8.0,
+                gain: 0.72,
+            },
+            GainPoint {
+                time: 12.0,
+                gain: 0.72,
+            },
+            GainPoint {
+                time: 16.0,
+                gain: 1.0,
+            },
+        ],
+        clips: vec![
+            Clip {
+                start: 0.0,
+                length: 4.0,
+                source: loop_source,
+                looping: true,
+                name: "main loop".into(),
+                ..Default::default()
+            },
+            Clip {
+                start: 4.0,
+                length: 4.0,
+                source: loop_source,
+                looping: true,
+                name: "Sequenced Loop".into(),
+                ..Default::default()
+            },
+            Clip {
+                start: 8.0,
+                length: 4.0,
+                source: loop_source,
+                looping: true,
+                name: "Sequenced Loop".into(),
+                ..Default::default()
+            },
+            Clip {
+                start: 12.0,
+                length: 4.0,
+                source: loop_source,
+                looping: true,
+                name: "Sequenced Loop".into(),
+                ..Default::default()
+            },
+        ],
+        ..Default::default()
+    });
+
     SampleLibrary {
-        root: Some(arr.id),
-        samples: vec![arr, bass, kick, snare, hat],
+        root: Some(timeline.id),
+        samples: vec![timeline, arr, bass, kick, snare, hat],
         ..Default::default()
     }
 }
@@ -1260,9 +1360,6 @@ fn song() -> SampleLibrary {
 // ======================================================================
 
 fn arrangement() -> SampleLibrary {
-    // Bounce-only arrangements: a couple of Sounds plus an (initially empty)
-    // arrangement. Bounce a Sound, then drop audio clips on the timeline.
-    // (Phase 6 ships a fully-arranged example with bounced clips.)
     let mut bass = Sample::new("Bass");
     {
         let saw = bass
@@ -1277,6 +1374,7 @@ fn arrangement() -> SampleLibrary {
         bass.graph.connect(Connection::node_to_node(saw, lp));
         bass.graph.connect(Connection::node_to_node(lp, amp));
     }
+    let bass_id = bass.id;
 
     let mut kick = Sample::new("Kick");
     {
@@ -1289,8 +1387,84 @@ fn arrangement() -> SampleLibrary {
             .push_node(Node::new(gain(env_perc(0.95, 0.002, 0.28))));
         kick.graph.connect(Connection::node_to_node(o, amp));
     }
+    let kick_id = kick.id;
 
-    let song = Sample::new_arrangement("Arrangement");
+    let mut song = Sample::new_arrangement("Arrangement");
+    song.arrangement.bpm = 110.0;
+    song.arrangement.length_secs = 8.0;
+    song.arrangement.loop_start = Some(0.0);
+    song.arrangement.loop_end = Some(8.0);
+    song.arrangement.sections = vec![
+        ArrSection {
+            name: "A".into(),
+            start: 0.0,
+            end: 4.0,
+        },
+        ArrSection {
+            name: "B".into(),
+            start: 4.0,
+            end: 8.0,
+        },
+    ];
+    song.arrangement.tracks = vec![
+        ArrTrack {
+            name: "Bass".into(),
+            gain: 0.95,
+            gain_automation: vec![
+                GainPoint {
+                    time: 0.0,
+                    gain: 1.0,
+                },
+                GainPoint {
+                    time: 4.0,
+                    gain: 0.72,
+                },
+                GainPoint {
+                    time: 6.0,
+                    gain: 0.72,
+                },
+                GainPoint {
+                    time: 8.0,
+                    gain: 1.0,
+                },
+            ],
+            clips: vec![
+                Clip {
+                    start: 0.0,
+                    length: 4.0,
+                    source: bass_id,
+                    looping: true,
+                    name: "bass A".into(),
+                    ..Default::default()
+                },
+                Clip {
+                    start: 4.0,
+                    length: 4.0,
+                    source: bass_id,
+                    gain: 0.8,
+                    looping: true,
+                    name: "bass B".into(),
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        },
+        ArrTrack {
+            name: "Kick".into(),
+            gain: 0.9,
+            clips: (0..8)
+                .map(|i| Clip {
+                    start: i as f64,
+                    length: 0.5,
+                    source: kick_id,
+                    name: if i == 0 { "kick".into() } else { String::new() },
+                    ..Default::default()
+                })
+                .collect(),
+            ..Default::default()
+        },
+    ];
+
     SampleLibrary {
         root: Some(song.id),
         samples: vec![song, bass, kick],

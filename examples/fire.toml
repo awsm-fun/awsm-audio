@@ -1,13 +1,13 @@
 version = 1
-root = "3332ede5-a6e6-4571-8c26-d261fca3bf6c"
+root = "da9ce148-9787-47ff-82af-60715e79b6da"
 
 [[samples]]
-id = "3332ede5-a6e6-4571-8c26-d261fca3bf6c"
+id = "da9ce148-9787-47ff-82af-60715e79b6da"
 name = "Fire"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "c0f44658-dfa6-4f1d-b6ff-9312c32ff2c0"
+id = "aae64dc6-3dc9-4bc5-b513-60bd2f006705"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -16,7 +16,7 @@ kind = "gain"
 value = 0.8999999761581421
 
 [[samples.graph.nodes]]
-id = "cb4b24e0-25aa-473d-ab38-dcf680f57973"
+id = "ae216573-80b3-4e3b-81a5-799afc1e96a2"
 
 [samples.graph.nodes.kind]
 kind = "noise"
@@ -30,7 +30,7 @@ density = 0.0
 gaussian = false
 
 [[samples.graph.nodes]]
-id = "fc25862e-7d70-4a3e-9d87-899fa4d1ee5e"
+id = "dff5fadd-69ab-4e74-9827-b81bd496d45e"
 
 [samples.graph.nodes.kind]
 kind = "biquad_filter"
@@ -51,7 +51,7 @@ value = 0.6000000238418579
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "c57cd195-1767-4c26-8c42-d894ce76d0bd"
+id = "14805c7f-bb0c-420b-90a4-d94de1967045"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -60,7 +60,7 @@ kind = "gain"
 value = 0.550000011920929
 
 [[samples.graph.nodes]]
-id = "589afb89-8f7d-4f9c-8bdd-5ac30b566626"
+id = "a1b6dc3f-2348-43dd-9f65-4ece0e2f4df5"
 
 [samples.graph.nodes.kind]
 kind = "noise"
@@ -74,7 +74,7 @@ density = 220.0
 gaussian = false
 
 [[samples.graph.nodes]]
-id = "982cfa99-06a8-4703-a117-fc117919ff2d"
+id = "249480d1-4e8b-40b4-be20-5119248a4b37"
 
 [samples.graph.nodes.kind]
 kind = "biquad_filter"
@@ -95,7 +95,7 @@ value = 3.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "1101a488-7a0f-4ce1-92ec-5105d5bbe184"
+id = "b021009c-a29d-42a0-b4fb-91c1d0794d87"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -104,7 +104,7 @@ kind = "gain"
 value = 0.699999988079071
 
 [[samples.graph.nodes]]
-id = "573d1187-a9ff-46fe-b53a-bbcea9709548"
+id = "bfa3970d-a2ed-47f4-9b9f-f8559827a3b3"
 
 [samples.graph.nodes.kind]
 kind = "noise"
@@ -118,7 +118,7 @@ density = 0.0
 gaussian = false
 
 [[samples.graph.nodes]]
-id = "6300795e-a84b-4cc3-b4a1-63fd4ec5f6da"
+id = "9a009779-26ca-4c9b-acff-05e372962c34"
 
 [samples.graph.nodes.kind]
 kind = "biquad_filter"
@@ -139,7 +139,7 @@ value = 0.699999988079071
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "1381facf-b4b1-421c-8022-face1c866f6e"
+id = "d4bef0ce-4fe1-4c81-a1d5-a50eccd6469d"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -151,108 +151,108 @@ value = 0.07999999821186066
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "cb4b24e0-25aa-473d-ab38-dcf680f57973"
+node = "ae216573-80b3-4e3b-81a5-799afc1e96a2"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "fc25862e-7d70-4a3e-9d87-899fa4d1ee5e"
+node = "dff5fadd-69ab-4e74-9827-b81bd496d45e"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "fc25862e-7d70-4a3e-9d87-899fa4d1ee5e"
+node = "dff5fadd-69ab-4e74-9827-b81bd496d45e"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "c57cd195-1767-4c26-8c42-d894ce76d0bd"
+node = "14805c7f-bb0c-420b-90a4-d94de1967045"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "c57cd195-1767-4c26-8c42-d894ce76d0bd"
+node = "14805c7f-bb0c-420b-90a4-d94de1967045"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "c0f44658-dfa6-4f1d-b6ff-9312c32ff2c0"
+node = "aae64dc6-3dc9-4bc5-b513-60bd2f006705"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "589afb89-8f7d-4f9c-8bdd-5ac30b566626"
+node = "a1b6dc3f-2348-43dd-9f65-4ece0e2f4df5"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "982cfa99-06a8-4703-a117-fc117919ff2d"
+node = "249480d1-4e8b-40b4-be20-5119248a4b37"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "982cfa99-06a8-4703-a117-fc117919ff2d"
+node = "249480d1-4e8b-40b4-be20-5119248a4b37"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "1101a488-7a0f-4ce1-92ec-5105d5bbe184"
+node = "b021009c-a29d-42a0-b4fb-91c1d0794d87"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "1101a488-7a0f-4ce1-92ec-5105d5bbe184"
+node = "b021009c-a29d-42a0-b4fb-91c1d0794d87"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "c0f44658-dfa6-4f1d-b6ff-9312c32ff2c0"
+node = "aae64dc6-3dc9-4bc5-b513-60bd2f006705"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "573d1187-a9ff-46fe-b53a-bbcea9709548"
+node = "bfa3970d-a2ed-47f4-9b9f-f8559827a3b3"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "6300795e-a84b-4cc3-b4a1-63fd4ec5f6da"
+node = "9a009779-26ca-4c9b-acff-05e372962c34"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "6300795e-a84b-4cc3-b4a1-63fd4ec5f6da"
+node = "9a009779-26ca-4c9b-acff-05e372962c34"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "1381facf-b4b1-421c-8022-face1c866f6e"
+node = "d4bef0ce-4fe1-4c81-a1d5-a50eccd6469d"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "1381facf-b4b1-421c-8022-face1c866f6e"
+node = "d4bef0ce-4fe1-4c81-a1d5-a50eccd6469d"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "c0f44658-dfa6-4f1d-b6ff-9312c32ff2c0"
+node = "aae64dc6-3dc9-4bc5-b513-60bd2f006705"
 input = 0
 
 [samples.trigger]

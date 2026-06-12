@@ -1,13 +1,95 @@
 version = 1
-root = "c7a7a11f-b4ba-4b0f-994e-9980adb643c4"
+root = "a49ffe1d-058c-4a5b-93c0-bebc829dc8ed"
 
 [[samples]]
-id = "c7a7a11f-b4ba-4b0f-994e-9980adb643c4"
+id = "a49ffe1d-058c-4a5b-93c0-bebc829dc8ed"
 name = "Sequenced Song"
+kind = "arrangement"
+
+[samples.graph]
+
+[samples.trigger]
+release = 0.0
+
+[samples.arrangement]
+bpm = 110.0
+length_secs = 16.0
+loop_start = 0.0
+loop_end = 16.0
+
+[[samples.arrangement.tracks]]
+name = "Sequenced loop"
+gain = 1.0
+
+[[samples.arrangement.tracks.gain_automation]]
+time = 0.0
+gain = 1.0
+
+[[samples.arrangement.tracks.gain_automation]]
+time = 8.0
+gain = 0.7200000286102295
+
+[[samples.arrangement.tracks.gain_automation]]
+time = 12.0
+gain = 0.7200000286102295
+
+[[samples.arrangement.tracks.gain_automation]]
+time = 16.0
+gain = 1.0
+
+[[samples.arrangement.tracks.clips]]
+start = 0.0
+length = 4.0
+source = "2dc46570-1a0c-46ff-b634-c60c726c363d"
+offset = 0.0
+gain = 1.0
+looping = true
+name = "main loop"
+
+[[samples.arrangement.tracks.clips]]
+start = 4.0
+length = 4.0
+source = "2dc46570-1a0c-46ff-b634-c60c726c363d"
+offset = 0.0
+gain = 1.0
+looping = true
+name = "Sequenced Loop"
+
+[[samples.arrangement.tracks.clips]]
+start = 8.0
+length = 4.0
+source = "2dc46570-1a0c-46ff-b634-c60c726c363d"
+offset = 0.0
+gain = 1.0
+looping = true
+name = "Sequenced Loop"
+
+[[samples.arrangement.tracks.clips]]
+start = 12.0
+length = 4.0
+source = "2dc46570-1a0c-46ff-b634-c60c726c363d"
+offset = 0.0
+gain = 1.0
+looping = true
+name = "Sequenced Loop"
+
+[[samples.arrangement.sections]]
+name = "A"
+start = 0.0
+end = 8.0
+
+[[samples.arrangement.sections]]
+name = "B breakdown"
+start = 8.0
+end = 16.0
+
+[[samples]]
+id = "2dc46570-1a0c-46ff-b634-c60c726c363d"
+name = "Sequenced Loop"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "80af0377-0dab-445f-acb2-b3c895033707"
+id = "65d7361b-f762-444e-9729-6f2c103c7029"
 
 [samples.graph.nodes.kind]
 kind = "note_sequencer"
@@ -91,7 +173,7 @@ label = "Bass"
 gain = 1.0
 
 [[samples.graph.nodes]]
-id = "38bdd300-290b-4d59-8dc2-cf720c031043"
+id = "425add69-8d09-4d49-99fd-ab6f51284cd1"
 
 [samples.graph.nodes.kind]
 kind = "note_sequencer"
@@ -286,43 +368,43 @@ label = "Hat"
 gain = 1.0
 
 [[samples.graph.nodes]]
-id = "52e1067b-2ed6-4f52-b9a9-bfa93f93c2c4"
+id = "ab606440-0a73-46df-aa1f-6e4568b9d938"
 
 [samples.graph.nodes.kind]
 kind = "sample"
 
 [samples.graph.nodes.kind.props]
-sample = "62758ad6-90a1-4365-82a1-1b2fec6813d9"
+sample = "1a9539c0-d2ce-4c9c-94ba-d0002e49c08d"
 
 [[samples.graph.nodes]]
-id = "16069511-ca67-4123-8d19-68bb6f6b125d"
+id = "f7885f34-9ce3-4e54-a2d3-520311d4dfb3"
 
 [samples.graph.nodes.kind]
 kind = "sample"
 
 [samples.graph.nodes.kind.props]
-sample = "e8f9b70a-7c0e-4c5a-b3cf-b945400f96de"
+sample = "1844892e-23ba-4696-b479-ce816cd735cf"
 
 [[samples.graph.nodes]]
-id = "e0e0d902-0360-48c9-8bf2-232a3447eaf4"
+id = "3371f0d3-0ca6-4aff-a677-47c0fda0fc2a"
 
 [samples.graph.nodes.kind]
 kind = "sample"
 
 [samples.graph.nodes.kind.props]
-sample = "cf2d77bf-7a5a-4701-983d-1ac6cb82ad59"
+sample = "6a4a3894-c7ee-421e-8f3a-f5fd2886c19e"
 
 [[samples.graph.nodes]]
-id = "d8662b34-5f02-4f8c-9230-3b84236d7f60"
+id = "d528e7a4-f557-4152-a194-e105b2486eb6"
 
 [samples.graph.nodes.kind]
 kind = "sample"
 
 [samples.graph.nodes.kind.props]
-sample = "22210484-5c4b-4671-b51b-876ecaa2ffd7"
+sample = "ffabf3f6-ea63-4b1d-8972-8bf2aa7c341e"
 
 [[samples.graph.nodes]]
-id = "02639c0a-926d-4ad7-83ec-e7f8046e08ca"
+id = "49b83eaf-45aa-4d24-b712-b40b7e79e8fb"
 
 [samples.graph.nodes.kind]
 kind = "bus"
@@ -331,7 +413,7 @@ kind = "bus"
 gain = 0.800000011920929
 
 [[samples.graph.nodes]]
-id = "af4bf7e2-4c58-49c3-b412-9f4732ace64e"
+id = "af24341b-9a0e-4d04-a712-1b5deea7d1fc"
 
 [samples.graph.nodes.kind]
 kind = "output"
@@ -343,116 +425,116 @@ value = 1.0
 
 [samples.graph.connections.from]
 from = "seq_out"
-node = "80af0377-0dab-445f-acb2-b3c895033707"
+node = "65d7361b-f762-444e-9729-6f2c103c7029"
 key = "t0"
 
 [samples.graph.connections.to]
 to = "trigger"
-node = "52e1067b-2ed6-4f52-b9a9-bfa93f93c2c4"
+node = "ab606440-0a73-46df-aa1f-6e4568b9d938"
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "seq_out"
-node = "38bdd300-290b-4d59-8dc2-cf720c031043"
+node = "425add69-8d09-4d49-99fd-ab6f51284cd1"
 key = "t0:n36"
 
 [samples.graph.connections.to]
 to = "trigger"
-node = "16069511-ca67-4123-8d19-68bb6f6b125d"
+node = "f7885f34-9ce3-4e54-a2d3-520311d4dfb3"
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "seq_out"
-node = "38bdd300-290b-4d59-8dc2-cf720c031043"
+node = "425add69-8d09-4d49-99fd-ab6f51284cd1"
 key = "t0:n38"
 
 [samples.graph.connections.to]
 to = "trigger"
-node = "e0e0d902-0360-48c9-8bf2-232a3447eaf4"
+node = "3371f0d3-0ca6-4aff-a677-47c0fda0fc2a"
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "seq_out"
-node = "38bdd300-290b-4d59-8dc2-cf720c031043"
+node = "425add69-8d09-4d49-99fd-ab6f51284cd1"
 key = "t0:n42"
 
 [samples.graph.connections.to]
 to = "trigger"
-node = "d8662b34-5f02-4f8c-9230-3b84236d7f60"
+node = "d528e7a4-f557-4152-a194-e105b2486eb6"
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "52e1067b-2ed6-4f52-b9a9-bfa93f93c2c4"
+node = "ab606440-0a73-46df-aa1f-6e4568b9d938"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "02639c0a-926d-4ad7-83ec-e7f8046e08ca"
+node = "49b83eaf-45aa-4d24-b712-b40b7e79e8fb"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "16069511-ca67-4123-8d19-68bb6f6b125d"
+node = "f7885f34-9ce3-4e54-a2d3-520311d4dfb3"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "02639c0a-926d-4ad7-83ec-e7f8046e08ca"
+node = "49b83eaf-45aa-4d24-b712-b40b7e79e8fb"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "e0e0d902-0360-48c9-8bf2-232a3447eaf4"
+node = "3371f0d3-0ca6-4aff-a677-47c0fda0fc2a"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "02639c0a-926d-4ad7-83ec-e7f8046e08ca"
+node = "49b83eaf-45aa-4d24-b712-b40b7e79e8fb"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "d8662b34-5f02-4f8c-9230-3b84236d7f60"
+node = "d528e7a4-f557-4152-a194-e105b2486eb6"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "02639c0a-926d-4ad7-83ec-e7f8046e08ca"
+node = "49b83eaf-45aa-4d24-b712-b40b7e79e8fb"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "02639c0a-926d-4ad7-83ec-e7f8046e08ca"
+node = "49b83eaf-45aa-4d24-b712-b40b7e79e8fb"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "af4bf7e2-4c58-49c3-b412-9f4732ace64e"
+node = "af24341b-9a0e-4d04-a712-1b5deea7d1fc"
 input = 0
 
 [samples.trigger]
 release = 0.0
 
 [[samples]]
-id = "62758ad6-90a1-4365-82a1-1b2fec6813d9"
+id = "1a9539c0-d2ce-4c9c-94ba-d0002e49c08d"
 name = "Bass"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "ec28ab09-1bb4-4020-9476-74275e7f34a4"
+id = "9e9c3379-4ee0-4e07-bf56-8a17918fe1f9"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -467,7 +549,7 @@ value = 261.6300048828125
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "98d1f930-def1-4cd9-b595-1b15023f381c"
+id = "e96bf5c2-01f4-4829-92bb-3391dd03e93c"
 
 [samples.graph.nodes.kind]
 kind = "biquad_filter"
@@ -488,7 +570,7 @@ value = 4.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "23ed88bf-df34-454a-a7d2-9609d402032d"
+id = "b1f54b62-ddd6-42bb-89c6-cec5280a24cf"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -521,36 +603,36 @@ time = 0.355
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "ec28ab09-1bb4-4020-9476-74275e7f34a4"
+node = "9e9c3379-4ee0-4e07-bf56-8a17918fe1f9"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "98d1f930-def1-4cd9-b595-1b15023f381c"
+node = "e96bf5c2-01f4-4829-92bb-3391dd03e93c"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "98d1f930-def1-4cd9-b595-1b15023f381c"
+node = "e96bf5c2-01f4-4829-92bb-3391dd03e93c"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "23ed88bf-df34-454a-a7d2-9609d402032d"
+node = "b1f54b62-ddd6-42bb-89c6-cec5280a24cf"
 input = 0
 
 [samples.trigger]
 release = 0.0
 
 [[samples]]
-id = "e8f9b70a-7c0e-4c5a-b3cf-b945400f96de"
+id = "1844892e-23ba-4696-b479-ce816cd735cf"
 name = "Kick"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "afb3c357-6f36-41a0-a7be-57ac3936721d"
+id = "67d03778-4deb-4959-b0bc-d3a5e872bf87"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -579,7 +661,7 @@ time = 0.12
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "bfbfb8e9-5423-43f9-b546-b8f4c911e401"
+id = "90494f6b-24fa-44f2-89c7-c4d26c36e4c6"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -612,24 +694,24 @@ time = 0.28200000000000003
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "afb3c357-6f36-41a0-a7be-57ac3936721d"
+node = "67d03778-4deb-4959-b0bc-d3a5e872bf87"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "bfbfb8e9-5423-43f9-b546-b8f4c911e401"
+node = "90494f6b-24fa-44f2-89c7-c4d26c36e4c6"
 input = 0
 
 [samples.trigger]
 release = 0.0
 
 [[samples]]
-id = "cf2d77bf-7a5a-4701-983d-1ac6cb82ad59"
+id = "6a4a3894-c7ee-421e-8f3a-f5fd2886c19e"
 name = "Snare"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "fa9f3415-5953-49d0-9c6a-d0dbd8cd8150"
+id = "1aecc95c-d3db-48ba-8c51-a3961e7598e3"
 
 [samples.graph.nodes.kind]
 kind = "noise"
@@ -643,7 +725,7 @@ density = 0.0
 gaussian = false
 
 [[samples.graph.nodes]]
-id = "0662b891-2008-439e-837e-13a54703ec31"
+id = "4cb00fa4-5fa6-41c2-8f10-e31a2cc9f598"
 
 [samples.graph.nodes.kind]
 kind = "biquad_filter"
@@ -664,7 +746,7 @@ value = 0.800000011920929
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "7efb9a8d-7fce-409b-812a-66bde101c99f"
+id = "14913c23-f2e6-4d70-b069-cb7087d519dd"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -697,36 +779,36 @@ time = 0.181
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "fa9f3415-5953-49d0-9c6a-d0dbd8cd8150"
+node = "1aecc95c-d3db-48ba-8c51-a3961e7598e3"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "0662b891-2008-439e-837e-13a54703ec31"
+node = "4cb00fa4-5fa6-41c2-8f10-e31a2cc9f598"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "0662b891-2008-439e-837e-13a54703ec31"
+node = "4cb00fa4-5fa6-41c2-8f10-e31a2cc9f598"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "7efb9a8d-7fce-409b-812a-66bde101c99f"
+node = "14913c23-f2e6-4d70-b069-cb7087d519dd"
 input = 0
 
 [samples.trigger]
 release = 0.0
 
 [[samples]]
-id = "22210484-5c4b-4671-b51b-876ecaa2ffd7"
+id = "ffabf3f6-ea63-4b1d-8972-8bf2aa7c341e"
 name = "Hi-hat"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "0d5d3d21-bdba-43b5-9702-b4da38d42437"
+id = "4bfc24e9-6762-4ab0-9c72-9ce51f967b40"
 
 [samples.graph.nodes.kind]
 kind = "noise"
@@ -740,7 +822,7 @@ density = 0.0
 gaussian = false
 
 [[samples.graph.nodes]]
-id = "a725f004-d903-4fd3-80dd-427bef89ec7f"
+id = "6ea48deb-499a-4926-8f25-87884f841816"
 
 [samples.graph.nodes.kind]
 kind = "biquad_filter"
@@ -761,7 +843,7 @@ value = 0.800000011920929
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "e50ef8bd-388c-4ed9-b3c3-1f811928f7f2"
+id = "fa0aab69-6d6b-4f5c-b453-d51819a93acc"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -794,24 +876,24 @@ time = 0.051000000000000004
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "0d5d3d21-bdba-43b5-9702-b4da38d42437"
+node = "4bfc24e9-6762-4ab0-9c72-9ce51f967b40"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "a725f004-d903-4fd3-80dd-427bef89ec7f"
+node = "6ea48deb-499a-4926-8f25-87884f841816"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "a725f004-d903-4fd3-80dd-427bef89ec7f"
+node = "6ea48deb-499a-4926-8f25-87884f841816"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "e50ef8bd-388c-4ed9-b3c3-1f811928f7f2"
+node = "fa0aab69-6d6b-4f5c-b453-d51819a93acc"
 input = 0
 
 [samples.trigger]

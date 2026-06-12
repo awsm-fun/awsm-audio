@@ -1,13 +1,13 @@
 version = 1
-root = "e1177e71-1a19-461e-9542-4ee37e17f656"
+root = "2f5c9759-b238-4c83-b9af-2f695d35cd26"
 
 [[samples]]
-id = "e1177e71-1a19-461e-9542-4ee37e17f656"
+id = "2f5c9759-b238-4c83-b9af-2f695d35cd26"
 name = "Ring Mod"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "31ff8c44-236b-43af-903c-714c4da9a830"
+id = "72cf3bb7-3e87-40fd-93c1-6a3434456ebe"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -22,13 +22,13 @@ value = 440.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "b256f634-0e48-4cf3-abfe-b0b645927363"
+id = "5570bb80-78e3-47fb-a807-fabb83f247d5"
 
 [samples.graph.nodes.kind]
 kind = "audio_worklet"
 
 [samples.graph.nodes.kind.props]
-module = "62c00db8-b745-4b3b-9b6f-29a8ef927d55"
+module = "a8e137a2-a67d-4b4e-ab3c-df362b814ad9"
 processor_name = "ringmod"
 
 [[samples.graph.nodes.kind.props.parameters]]
@@ -48,7 +48,7 @@ max = 1.0
 value = 1.0
 
 [[samples.graph.nodes]]
-id = "1a4a3685-49ea-419e-8a37-861934a7ac4d"
+id = "91cda02d-7f8d-4d66-a0d1-e450fdc73a89"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -78,7 +78,7 @@ value = 0.00009999999747378752
 time = 1.605
 
 [[samples.graph.nodes]]
-id = "6d8cd22b-d623-4f0f-b3c9-836bc0d0f35d"
+id = "98a8ada3-6cdc-48fd-8c4f-7ffbaa5ae69b"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -93,7 +93,7 @@ value = 6.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "fa8a0740-eb03-4936-93f0-3f98949afa1a"
+id = "89a1b8fb-852f-45f9-a219-786a701bbfb5"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -105,55 +105,55 @@ value = 120.0
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "31ff8c44-236b-43af-903c-714c4da9a830"
+node = "72cf3bb7-3e87-40fd-93c1-6a3434456ebe"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "b256f634-0e48-4cf3-abfe-b0b645927363"
+node = "5570bb80-78e3-47fb-a807-fabb83f247d5"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "b256f634-0e48-4cf3-abfe-b0b645927363"
+node = "5570bb80-78e3-47fb-a807-fabb83f247d5"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "1a4a3685-49ea-419e-8a37-861934a7ac4d"
+node = "91cda02d-7f8d-4d66-a0d1-e450fdc73a89"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "6d8cd22b-d623-4f0f-b3c9-836bc0d0f35d"
+node = "98a8ada3-6cdc-48fd-8c4f-7ffbaa5ae69b"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "fa8a0740-eb03-4936-93f0-3f98949afa1a"
+node = "89a1b8fb-852f-45f9-a219-786a701bbfb5"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "fa8a0740-eb03-4936-93f0-3f98949afa1a"
+node = "89a1b8fb-852f-45f9-a219-786a701bbfb5"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_param"
-node = "b256f634-0e48-4cf3-abfe-b0b645927363"
+node = "5570bb80-78e3-47fb-a807-fabb83f247d5"
 param = "freq"
 
 [samples.trigger]
 release = 0.0
 
 [[assets.wasm_modules]]
-id = "62c00db8-b745-4b3b-9b6f-29a8ef927d55"
+id = "a8e137a2-a67d-4b4e-ab3c-df362b814ad9"
 label = "ringmod"
 
 [assets.wasm_modules.source]

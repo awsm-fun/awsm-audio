@@ -1124,6 +1124,12 @@ fn mini_waveform(source: SampleId) -> Dom {
 /// Build an SVG waveform from a peaks list, stretched to fill its box (viewBox
 /// is resolution-independent so it scales with any width).
 fn peaks_svg(peaks: &[(f32, f32)], fill: &str, height: f64) -> Dom {
+    if peaks.is_empty() {
+        return html!("div", {
+            .style("height", &format!("{height}px"))
+            .style("pointer-events", "none")
+        });
+    }
     let n = peaks.len().max(1);
     // Polygon: across the tops (1 - hi), back across the bottoms (1 - lo).
     let mut d = String::from("M");

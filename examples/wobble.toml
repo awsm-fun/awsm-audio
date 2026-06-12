@@ -1,13 +1,13 @@
 version = 1
-root = "9f7707bb-4589-4e94-9297-d442de49c611"
+root = "c3d76a8f-60f7-4f85-8bdb-b3594e8c8f3f"
 
 [[samples]]
-id = "9f7707bb-4589-4e94-9297-d442de49c611"
+id = "c3d76a8f-60f7-4f85-8bdb-b3594e8c8f3f"
 name = "Wobble Bass"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "a88a8ba7-3348-419f-b7bd-e08afc65feee"
+id = "174b4517-6715-4450-97a2-9f354d7d7043"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -22,7 +22,7 @@ value = 55.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "75f38a9d-d766-4420-92b8-557988cb1cfc"
+id = "c0a623c2-a40a-48cd-9315-77c529d15389"
 
 [samples.graph.nodes.kind]
 kind = "biquad_filter"
@@ -43,7 +43,7 @@ value = 9.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "a85cba20-3c16-4afd-a0a8-758ecdde4e2b"
+id = "a49ea851-5c02-4d9d-b7a1-26aa449c10b0"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -52,7 +52,7 @@ kind = "gain"
 value = 0.5
 
 [[samples.graph.nodes]]
-id = "36dcabce-b68f-4cb8-b8a5-e80df5e725fa"
+id = "094201ec-cc97-46e7-8dcd-f4e817b8d628"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -67,7 +67,7 @@ value = 4.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "c51af542-09f6-47bd-925f-8cd2c2377e63"
+id = "a9124989-8194-4e20-b94d-0d5659afb74d"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -79,48 +79,48 @@ value = 550.0
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "a88a8ba7-3348-419f-b7bd-e08afc65feee"
+node = "174b4517-6715-4450-97a2-9f354d7d7043"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "75f38a9d-d766-4420-92b8-557988cb1cfc"
+node = "c0a623c2-a40a-48cd-9315-77c529d15389"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "75f38a9d-d766-4420-92b8-557988cb1cfc"
+node = "c0a623c2-a40a-48cd-9315-77c529d15389"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "a85cba20-3c16-4afd-a0a8-758ecdde4e2b"
+node = "a49ea851-5c02-4d9d-b7a1-26aa449c10b0"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "36dcabce-b68f-4cb8-b8a5-e80df5e725fa"
+node = "094201ec-cc97-46e7-8dcd-f4e817b8d628"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "c51af542-09f6-47bd-925f-8cd2c2377e63"
+node = "a9124989-8194-4e20-b94d-0d5659afb74d"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "c51af542-09f6-47bd-925f-8cd2c2377e63"
+node = "a9124989-8194-4e20-b94d-0d5659afb74d"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_param"
-node = "75f38a9d-d766-4420-92b8-557988cb1cfc"
+node = "c0a623c2-a40a-48cd-9315-77c529d15389"
 param = "frequency"
 
 [samples.trigger]

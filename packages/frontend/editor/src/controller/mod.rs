@@ -178,6 +178,9 @@ pub struct EditorController {
             std::collections::HashMap<awsm_audio_schema::AssetId, awsm_audio_schema::BufferAsset>,
         >,
     >,
+    /// Optional base URL/path for resolving project-relative `AudioSource::Path`
+    /// assets in bundled examples.
+    asset_base_path: Rc<RefCell<Option<String>>>,
     /// The canvas viewport element, for client→world coordinate conversion.
     viewport: Rc<RefCell<Option<web_sys::Element>>>,
     /// Copy/paste clipboard: nodes (kind + relative pos) and their internal wires.
@@ -343,6 +346,7 @@ impl EditorController {
             player: Rc::new(RefCell::new(None)),
             wasm_assets: Rc::new(RefCell::new(std::collections::HashMap::new())),
             buffer_assets: Rc::new(RefCell::new(std::collections::HashMap::new())),
+            asset_base_path: Rc::new(RefCell::new(None)),
             viewport: Rc::new(RefCell::new(None)),
             clipboard: Rc::new(RefCell::new(None)),
             palette_drag: Rc::new(RefCell::new(None)),
@@ -4240,7 +4244,20 @@ impl EditorController {
 
     /// Load a built-in example by name and close the browser.
     pub fn load_example(&self, name: &str) {
-        if let Some((_, lib)) = awsm_audio_schema::examples::all()
+        if let Some(toml) = awsm_audio_schema::examples::project_toml(name) {
+            match toml::from_str::<crate::controller::snapshot::EditorProject>(toml) {
+                Ok(project) => {
+                    self.open_project_with_asset_base(
+                        project,
+                        awsm_audio_schema::examples::project_asset_base(name)
+                            .map(|s| s.to_string()),
+                    );
+                }
+                Err(e) => self
+                    .status
+                    .set(Some(format!("Example project parse failed: {e}"))),
+            }
+        } else if let Some((_, lib)) = awsm_audio_schema::examples::all()
             .into_iter()
             .find(|(n, _)| *n == name)
         {
@@ -4253,12 +4270,22 @@ impl EditorController {
     /// nodes (the schema carries no positions). Used by the Examples menu and
     /// the `editor_load_toml` seam. Clears the undo history (a fresh document).
     pub fn load_library(&self, lib: awsm_audio_schema::SampleLibrary) {
+        *self.asset_base_path.borrow_mut() = None;
         self.load_library_inner(lib, None);
     }
 
     /// Open a full editor project (library + saved layout + camera), restoring
     /// node positions and view exactly (Open of a saved `.toml`).
     pub fn open_project(&self, project: crate::controller::snapshot::EditorProject) {
+        self.open_project_with_asset_base(project, None);
+    }
+
+    fn open_project_with_asset_base(
+        &self,
+        project: crate::controller::snapshot::EditorProject,
+        asset_base_path: Option<String>,
+    ) {
+        *self.asset_base_path.borrow_mut() = asset_base_path;
         let view = (project.layout, project.pan_x, project.pan_y, project.zoom);
         self.load_library_inner(project.library, Some(view));
     }
@@ -4498,17 +4525,24 @@ impl EditorController {
                             tracing::error!("store pcm: {e}");
                         }
                     }
+                    self.samples_rev.replace_with(|r| r.wrapping_add(1));
                     if self.playing.get() {
                         self.play();
                     }
                 }
-                // A directory-project path: only resolvable when opened via a
-                // project directory (which rehydrates it to inline bytes first).
-                // Reaching here means it was opened without one — leave it silent.
+                // Project-relative path, or a relative/absolute URL. Directory
+                // opens normally rehydrate these to inline bytes first; bundled
+                // examples keep the path and resolve it against their copied
+                // example directory.
                 AudioSource::Path(path) => {
-                    tracing::warn!(
-                        "buffer asset {id} references file {path}; open via a project directory"
-                    );
+                    let base = self.asset_base_path.borrow().clone();
+                    let url = resolve_asset_url(base.as_deref(), &path);
+                    wasm_bindgen_futures::spawn_local(async move {
+                        match fetch_bytes(&url).await {
+                            Ok(buf) => ctrl.decode_and_store(&player, id, &buf).await,
+                            Err(e) => tracing::error!("fetch buffer path {url}: {e:?}"),
+                        }
+                    });
                 }
             }
         }
@@ -4556,6 +4590,7 @@ impl EditorController {
                 if let Some(p) = player.borrow_mut().as_mut() {
                     p.store_buffer(id, buffer);
                 }
+                self.samples_rev.replace_with(|r| r.wrapping_add(1));
                 if self.playing.get() {
                     self.play();
                 }
@@ -4622,13 +4657,16 @@ impl EditorController {
                             return;
                         }
                     },
-                    // A directory-project path; resolvable only when opened via a
-                    // project directory (which rehydrates it to inline bytes).
                     awsm_audio_schema::WasmSource::Path(path) => {
-                        tracing::warn!(
-                            "wasm asset references file {path}; open via a project directory"
-                        );
-                        return;
+                        let base = ctrl.asset_base_path.borrow().clone();
+                        let url = resolve_asset_url(base.as_deref(), &path);
+                        match fetch_bytes(&url).await {
+                            Ok(buf) => js_sys::Uint8Array::new(&buf).to_vec(),
+                            Err(e) => {
+                                tracing::error!("fetch wasm path {url}: {e:?}");
+                                return;
+                            }
+                        }
                     }
                 };
                 if !ctrl.ensure_worklet_shim(&player).await {
@@ -5659,11 +5697,39 @@ fn sanitize_filename(name: &str) -> String {
     }
 }
 
+fn resolve_asset_url(base: Option<&str>, path: &str) -> String {
+    let path = path.trim();
+    let lower = path.to_ascii_lowercase();
+    if lower.starts_with("http://")
+        || lower.starts_with("https://")
+        || lower.starts_with("data:")
+        || lower.starts_with("blob:")
+        || path.starts_with('/')
+    {
+        return path.to_string();
+    }
+    match base.map(str::trim).filter(|base| !base.is_empty()) {
+        Some(base) => format!(
+            "{}/{}",
+            base.trim_end_matches('/'),
+            path.trim_start_matches('/')
+        ),
+        None => path.to_string(),
+    }
+}
+
 async fn fetch_bytes(url: &str) -> Result<js_sys::ArrayBuffer, JsValue> {
     let win = web_sys::window().ok_or_else(|| JsValue::from_str("no window"))?;
     let resp: web_sys::Response = wasm_bindgen_futures::JsFuture::from(win.fetch_with_str(url))
         .await?
         .dyn_into()?;
+    if !resp.ok() {
+        return Err(JsValue::from_str(&format!(
+            "HTTP {} {}",
+            resp.status(),
+            resp.status_text()
+        )));
+    }
     let buf = wasm_bindgen_futures::JsFuture::from(resp.array_buffer()?).await?;
     Ok(buf.unchecked_into())
 }
