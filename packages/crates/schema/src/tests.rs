@@ -781,6 +781,10 @@ fn arrangement_round_trips() {
         gain: 0.9,
         mute: false,
         solo: false,
+        gain_automation: vec![GainPoint {
+            time: 4.0,
+            gain: 0.7,
+        }],
         clips: vec![Clip {
             start: 2.0,
             length: 4.0,
@@ -809,6 +813,19 @@ fn arrangement_round_trips() {
     // A clean Sound serializes neither an arrangement nor a bounce.
     let t = toml::to_string(&Sample::new("clean")).unwrap();
     assert!(!t.contains("arrangement") && !t.contains("bounce"));
+}
+
+#[test]
+fn bounce_hash_is_toml_safe() {
+    let mut snd = Sample::new("lead");
+    snd.bounce = Some(Bounce {
+        asset: AssetId::new(),
+        source_hash: u64::MAX,
+    });
+
+    let text = toml::to_string(&snd).expect("high bounce hashes must not break save/export");
+    let back: Sample = toml::from_str(&text).expect("saved high hash reloads");
+    assert_eq!(back.bounce.unwrap().source_hash, crate::MAX_TOML_U64);
 }
 
 #[test]

@@ -438,6 +438,12 @@ async fn serve_one(id: u64, req: Request) {
                 Err(e) => Response::Err(e),
             }
         }
+        Request::Query(EditorQuery::ArrangementSectionStats { sections }) => {
+            match controller().arrangement_section_stats(sections).await {
+                Ok(stats) => Response::Query(Box::new(QueryResult::ArrangementSectionStats(stats))),
+                Err(e) => Response::Err(e),
+            }
+        }
         Request::Query(q) if is_wav_query(&q) => render_query(q).await,
         req => dispatch(req),
     };

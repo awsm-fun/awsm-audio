@@ -97,6 +97,10 @@ pub struct ArrTrack {
     /// Soloed: if any track is soloed, only soloed tracks play.
     #[serde(default, skip_serializing_if = "is_false")]
     pub solo: bool,
+    /// Arrangement-level gain automation points. Times are in seconds on the
+    /// arrangement timeline; gains are linear and interpolated between points.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub gain_automation: Vec<GainPoint>,
     /// The clips placed on this track's timeline.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub clips: Vec<Clip>,
@@ -109,9 +113,69 @@ impl Default for ArrTrack {
             gain: 1.0,
             mute: false,
             solo: false,
+            gain_automation: Vec::new(),
             clips: Vec::new(),
         }
     }
+}
+
+/// A linear gain keyframe on an arrangement track.
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GainPoint {
+    /// Time in seconds on the arrangement timeline.
+    pub time: f64,
+    /// Linear gain multiplier. 1.0 = unity.
+    pub gain: f32,
+}
+
+impl ArrTrack {
+    pub fn gain_at(&self, time: f64) -> f32 {
+        gain_at_points(&self.gain_automation, time)
+    }
+}
+
+pub fn normalize_gain_points(points: &mut Vec<GainPoint>) {
+    for p in points.iter_mut() {
+        p.time = p.time.max(0.0);
+        p.gain = p.gain.clamp(0.0, 4.0);
+    }
+    points.sort_by(|a, b| {
+        a.time
+            .partial_cmp(&b.time)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    let mut deduped: Vec<GainPoint> = Vec::with_capacity(points.len());
+    for p in points.drain(..) {
+        if let Some(last) = deduped.last_mut() {
+            if (last.time - p.time).abs() < 1e-6 {
+                *last = p;
+                continue;
+            }
+        }
+        deduped.push(p);
+    }
+    *points = deduped;
+}
+
+pub fn gain_at_points(points: &[GainPoint], time: f64) -> f32 {
+    if points.is_empty() {
+        return 1.0;
+    }
+    let time = time.max(0.0);
+    if time <= points[0].time {
+        return points[0].gain;
+    }
+    for pair in points.windows(2) {
+        let a = &pair[0];
+        let b = &pair[1];
+        if time <= b.time {
+            let span = (b.time - a.time).max(1e-9);
+            let x = ((time - a.time) / span).clamp(0.0, 1.0) as f32;
+            return a.gain + (b.gain - a.gain) * x;
+        }
+    }
+    points.last().map(|p| p.gain).unwrap_or(1.0)
 }
 
 /// An audio clip placed on a track: an instance of a Sound's bounced buffer. The
@@ -177,9 +241,33 @@ pub struct Bounce {
     /// The rendered [`BufferAsset`](crate::BufferAsset) id.
     pub asset: AssetId,
     /// Hash of the source graph when bounced (see editor dirty-check).
+    #[serde(
+        serialize_with = "serialize_toml_safe_u64",
+        deserialize_with = "deserialize_toml_safe_u64"
+    )]
     pub source_hash: u64,
 }
 
 fn is_false(b: &bool) -> bool {
     !*b
+}
+
+/// TOML integers are signed 64-bit values. Bounce hashes are opaque freshness
+/// tokens, so clamp them into TOML's representable range instead of letting a
+/// high-bit hash make project save/export fail.
+pub const MAX_TOML_U64: u64 = i64::MAX as u64;
+
+fn serialize_toml_safe_u64<S>(v: &u64, s: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    s.serialize_u64((*v).min(MAX_TOML_U64))
+}
+
+fn deserialize_toml_safe_u64<'de, D>(de: D) -> Result<u64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw = u64::deserialize(de)?;
+    Ok(raw.min(MAX_TOML_U64))
 }

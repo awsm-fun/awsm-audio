@@ -3,7 +3,7 @@
 //! as well as encode. Values that don't derive `PartialEq` are compared by their
 //! serialized JSON form (serialize → deserialize → serialize, assert equal).
 
-use awsm_audio_schema::{Clip, NodeId, NodeKind, NoteEvent, SampleId};
+use awsm_audio_schema::{Clip, GainPoint, NodeId, NodeKind, NoteEvent, SampleId};
 use serde_json::Value;
 
 use crate::{
@@ -184,6 +184,8 @@ fn query_result_round_trip() {
             attack_secs: 0.01,
             decay_secs: 0.5,
             true_peak: 0.92,
+            spectral_centroid_hz: 1200.0,
+            brightness: 0.25,
         }),
         QueryResult::Waveform(WaveformEnvelope {
             sample_rate: 48_000,
@@ -335,6 +337,44 @@ fn arrange_set_markers_round_trip() {
             start: None,
             end: None,
         },
+    ] {
+        let cmd = EditorCommand::EditArrange { op };
+        json_round_trip(&cmd);
+        toml_round_trip(&cmd);
+    }
+}
+
+#[test]
+fn arrange_track_gain_automation_round_trip() {
+    for op in [
+        ArrangeOp::SetTrackGainPoints {
+            track: 0,
+            points: vec![
+                GainPoint {
+                    time: 0.0,
+                    gain: 1.0,
+                },
+                GainPoint {
+                    time: 8.0,
+                    gain: 0.5,
+                },
+            ],
+        },
+        ArrangeOp::AddTrackGainPoint {
+            track: 0,
+            point: GainPoint {
+                time: 4.0,
+                gain: 0.75,
+            },
+        },
+        ArrangeOp::RemoveTrackGainPoint { track: 0, index: 1 },
+        ArrangeOp::MoveTrackGainPoint {
+            track: 0,
+            index: 1,
+            time: 6.0,
+            gain: 0.65,
+        },
+        ArrangeOp::ClearTrackGainAutomation { track: 0 },
     ] {
         let cmd = EditorCommand::EditArrange { op };
         json_round_trip(&cmd);
