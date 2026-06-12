@@ -1,13 +1,13 @@
 version = 1
-root = "64e6b2ea-abde-4daf-bb96-5a0f76b8fce8"
+root = "ce1e221f-b3d8-47f3-a9a2-3424fe8d979e"
 
 [[samples]]
-id = "64e6b2ea-abde-4daf-bb96-5a0f76b8fce8"
+id = "ce1e221f-b3d8-47f3-a9a2-3424fe8d979e"
 name = "Hi-hat"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "57c4a9ec-daf8-4394-b1a1-28882ff083f0"
+id = "40afda9b-f405-4f5e-90eb-82422c40fffd"
 
 [samples.graph.nodes.kind]
 kind = "noise"
@@ -21,7 +21,7 @@ density = 0.0
 gaussian = false
 
 [[samples.graph.nodes]]
-id = "33ed0b01-a4cb-4abb-9b74-c8617c5eca54"
+id = "220b4304-0f79-4911-91c0-eeebdcf7e494"
 
 [samples.graph.nodes.kind]
 kind = "biquad_filter"
@@ -42,7 +42,7 @@ value = 0.800000011920929
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "670341bf-9be3-4423-96d4-4320e63d3692"
+id = "d99e2651-6d44-479f-90f5-c5e8bbf3969e"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -75,24 +75,24 @@ time = 0.061
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "57c4a9ec-daf8-4394-b1a1-28882ff083f0"
+node = "40afda9b-f405-4f5e-90eb-82422c40fffd"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "33ed0b01-a4cb-4abb-9b74-c8617c5eca54"
+node = "220b4304-0f79-4911-91c0-eeebdcf7e494"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "33ed0b01-a4cb-4abb-9b74-c8617c5eca54"
+node = "220b4304-0f79-4911-91c0-eeebdcf7e494"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "670341bf-9be3-4423-96d4-4320e63d3692"
+node = "d99e2651-6d44-479f-90f5-c5e8bbf3969e"
 input = 0
 
 [samples.trigger]

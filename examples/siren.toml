@@ -1,13 +1,13 @@
 version = 1
-root = "dc4a0cab-a8bd-4b34-981f-88e0bb69cee4"
+root = "6acd3f95-ffa5-4b3f-b0a0-c3119a132343"
 
 [[samples]]
-id = "dc4a0cab-a8bd-4b34-981f-88e0bb69cee4"
+id = "6acd3f95-ffa5-4b3f-b0a0-c3119a132343"
 name = "Siren"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "ab7df3e2-910d-4624-87b9-9a89215dbccc"
+id = "0878b681-4ab9-4a9a-92f4-477e44c20259"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -22,7 +22,7 @@ value = 600.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "7cdc8365-485f-4f44-ad48-50291049457c"
+id = "174eca95-7f6a-49ca-84ec-3114ad4445f4"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -31,7 +31,7 @@ kind = "gain"
 value = 0.30000001192092896
 
 [[samples.graph.nodes]]
-id = "bac6e78d-b923-4bb2-8f81-043860f876ee"
+id = "d231990c-6690-4671-9365-7cb369f05094"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -46,7 +46,7 @@ value = 0.5
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "cf0f77ec-d205-4ce8-a598-acb3b95d5ccd"
+id = "49ba83b4-1ee1-47cf-bb90-4651f422ddb8"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -58,36 +58,36 @@ value = 250.0
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "ab7df3e2-910d-4624-87b9-9a89215dbccc"
+node = "0878b681-4ab9-4a9a-92f4-477e44c20259"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "7cdc8365-485f-4f44-ad48-50291049457c"
+node = "174eca95-7f6a-49ca-84ec-3114ad4445f4"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "bac6e78d-b923-4bb2-8f81-043860f876ee"
+node = "d231990c-6690-4671-9365-7cb369f05094"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "cf0f77ec-d205-4ce8-a598-acb3b95d5ccd"
+node = "49ba83b4-1ee1-47cf-bb90-4651f422ddb8"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "cf0f77ec-d205-4ce8-a598-acb3b95d5ccd"
+node = "49ba83b4-1ee1-47cf-bb90-4651f422ddb8"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_param"
-node = "ab7df3e2-910d-4624-87b9-9a89215dbccc"
+node = "0878b681-4ab9-4a9a-92f4-477e44c20259"
 param = "frequency"
 
 [samples.trigger]

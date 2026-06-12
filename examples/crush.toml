@@ -1,13 +1,13 @@
 version = 1
-root = "dd211c5b-b843-408c-b848-a1c1cac8cd58"
+root = "cc9ca9e8-2c2d-4ad5-82d4-c2193c9fdd6e"
 
 [[samples]]
-id = "dd211c5b-b843-408c-b848-a1c1cac8cd58"
+id = "cc9ca9e8-2c2d-4ad5-82d4-c2193c9fdd6e"
 name = "Crush"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "8470a46d-ab3c-40ae-9518-4dda40fd2897"
+id = "4f3a051a-b295-432a-8515-c56c8f4345f4"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -22,13 +22,13 @@ value = 110.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "84e81a09-2332-481a-9ebd-279bba01c839"
+id = "d54074ed-dc95-49d6-ae5f-c8b6053d4a0b"
 
 [samples.graph.nodes.kind]
 kind = "audio_worklet"
 
 [samples.graph.nodes.kind.props]
-module = "92025188-6c8d-435d-9281-97e4f37c58aa"
+module = "f2c08804-f607-4a47-a4a8-d824005e3e81"
 processor_name = "bitcrusher"
 
 [[samples.graph.nodes.kind.props.parameters]]
@@ -48,7 +48,7 @@ max = 32.0
 value = 6.0
 
 [[samples.graph.nodes]]
-id = "a6551e16-f0ef-451b-921b-5ba756a32df1"
+id = "878dcd7d-1e43-448b-ae3f-f626c4310661"
 
 [samples.graph.nodes.kind]
 kind = "biquad_filter"
@@ -83,7 +83,7 @@ value = 6.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "5ae93f58-f8bc-4da7-81a3-34464f991e0c"
+id = "05590960-e536-4f0a-a8c4-38aaa869d0bf"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -116,43 +116,43 @@ time = 0.605
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "8470a46d-ab3c-40ae-9518-4dda40fd2897"
+node = "4f3a051a-b295-432a-8515-c56c8f4345f4"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "84e81a09-2332-481a-9ebd-279bba01c839"
+node = "d54074ed-dc95-49d6-ae5f-c8b6053d4a0b"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "84e81a09-2332-481a-9ebd-279bba01c839"
+node = "d54074ed-dc95-49d6-ae5f-c8b6053d4a0b"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "a6551e16-f0ef-451b-921b-5ba756a32df1"
+node = "878dcd7d-1e43-448b-ae3f-f626c4310661"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "a6551e16-f0ef-451b-921b-5ba756a32df1"
+node = "878dcd7d-1e43-448b-ae3f-f626c4310661"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "5ae93f58-f8bc-4da7-81a3-34464f991e0c"
+node = "05590960-e536-4f0a-a8c4-38aaa869d0bf"
 input = 0
 
 [samples.trigger]
 release = 0.0
 
 [[assets.wasm_modules]]
-id = "92025188-6c8d-435d-9281-97e4f37c58aa"
+id = "f2c08804-f607-4a47-a4a8-d824005e3e81"
 label = "bitcrusher"
 
 [assets.wasm_modules.source]

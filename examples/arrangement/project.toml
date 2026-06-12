@@ -1,0 +1,385 @@
+pan_x = 0.0
+pan_y = 0.0
+zoom = 1.0
+
+[library]
+version = 1
+root = "3253d135-1bc6-4d1d-aec7-7945515b8e44"
+
+[[library.samples]]
+id = "3253d135-1bc6-4d1d-aec7-7945515b8e44"
+name = "Arrangement"
+kind = "arrangement"
+
+[library.samples.graph]
+
+[library.samples.trigger]
+release = 0.0
+
+[library.samples.arrangement]
+bpm = 110.0
+length_secs = 8.0
+loop_start = 0.0
+loop_end = 8.0
+
+[[library.samples.arrangement.tracks]]
+name = "Bass"
+gain = 0.949999988079071
+
+[[library.samples.arrangement.tracks.gain_automation]]
+time = 0.0
+gain = 1.0
+
+[[library.samples.arrangement.tracks.gain_automation]]
+time = 4.0
+gain = 0.7200000286102295
+
+[[library.samples.arrangement.tracks.gain_automation]]
+time = 6.0
+gain = 0.7200000286102295
+
+[[library.samples.arrangement.tracks.gain_automation]]
+time = 8.0
+gain = 1.0
+
+[[library.samples.arrangement.tracks.clips]]
+start = 0.0
+length = 4.0
+source = "74378a2a-03bd-45a9-b613-9551c4c6ee9e"
+offset = 0.0
+gain = 1.0
+looping = true
+name = "bass A"
+
+[[library.samples.arrangement.tracks.clips]]
+start = 4.0
+length = 4.0
+source = "74378a2a-03bd-45a9-b613-9551c4c6ee9e"
+offset = 0.0
+gain = 0.800000011920929
+looping = true
+name = "bass B"
+
+[[library.samples.arrangement.tracks]]
+name = "Kick"
+gain = 0.8999999761581421
+
+[[library.samples.arrangement.tracks.clips]]
+start = 0.0
+length = 0.5
+source = "ec70ad1d-41b8-4ffd-a11a-b472a60e83c5"
+offset = 0.0
+gain = 1.0
+name = "kick"
+
+[[library.samples.arrangement.tracks.clips]]
+start = 1.0
+length = 0.5
+source = "ec70ad1d-41b8-4ffd-a11a-b472a60e83c5"
+offset = 0.0
+gain = 1.0
+
+[[library.samples.arrangement.tracks.clips]]
+start = 2.0
+length = 0.5
+source = "ec70ad1d-41b8-4ffd-a11a-b472a60e83c5"
+offset = 0.0
+gain = 1.0
+
+[[library.samples.arrangement.tracks.clips]]
+start = 3.0
+length = 0.5
+source = "ec70ad1d-41b8-4ffd-a11a-b472a60e83c5"
+offset = 0.0
+gain = 1.0
+
+[[library.samples.arrangement.tracks.clips]]
+start = 4.0
+length = 0.5
+source = "ec70ad1d-41b8-4ffd-a11a-b472a60e83c5"
+offset = 0.0
+gain = 1.0
+
+[[library.samples.arrangement.tracks.clips]]
+start = 5.0
+length = 0.5
+source = "ec70ad1d-41b8-4ffd-a11a-b472a60e83c5"
+offset = 0.0
+gain = 1.0
+
+[[library.samples.arrangement.tracks.clips]]
+start = 6.0
+length = 0.5
+source = "ec70ad1d-41b8-4ffd-a11a-b472a60e83c5"
+offset = 0.0
+gain = 1.0
+
+[[library.samples.arrangement.tracks.clips]]
+start = 7.0
+length = 0.5
+source = "ec70ad1d-41b8-4ffd-a11a-b472a60e83c5"
+offset = 0.0
+gain = 1.0
+
+[[library.samples.arrangement.sections]]
+name = "A"
+start = 0.0
+end = 4.0
+
+[[library.samples.arrangement.sections]]
+name = "B"
+start = 4.0
+end = 8.0
+
+[[library.samples]]
+id = "74378a2a-03bd-45a9-b613-9551c4c6ee9e"
+name = "Bass"
+kind = "sound"
+
+[[library.samples.graph.nodes]]
+id = "1b791202-447e-4032-9c36-000bec206d14"
+
+[library.samples.graph.nodes.kind]
+kind = "oscillator"
+
+[library.samples.graph.nodes.kind.props]
+type = "sawtooth"
+
+[library.samples.graph.nodes.kind.props.frequency]
+value = 110.0
+
+[library.samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[library.samples.graph.nodes]]
+id = "3434f6de-d7d5-46e9-9ae2-c78c7007d4b2"
+
+[library.samples.graph.nodes.kind]
+kind = "biquad_filter"
+
+[library.samples.graph.nodes.kind.props]
+type = "lowpass"
+
+[library.samples.graph.nodes.kind.props.frequency]
+value = 600.0
+
+[library.samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[library.samples.graph.nodes.kind.props.Q]
+value = 4.0
+
+[library.samples.graph.nodes.kind.props.gain]
+value = 0.0
+
+[[library.samples.graph.nodes]]
+id = "00ff1353-b578-4e9a-8f79-7c2841b9a70c"
+
+[library.samples.graph.nodes.kind]
+kind = "gain"
+
+[library.samples.graph.nodes.kind.props.gain]
+value = 0.00009999999747378752
+
+[[library.samples.graph.nodes.kind.props.gain.automation]]
+event = "set_value"
+
+[library.samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.0
+
+[[library.samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[library.samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.699999988079071
+time = 0.005
+
+[[library.samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[library.samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.405
+
+[[library.samples.graph.connections]]
+
+[library.samples.graph.connections.from]
+from = "node_output"
+node = "1b791202-447e-4032-9c36-000bec206d14"
+output = 0
+
+[library.samples.graph.connections.to]
+to = "node_input"
+node = "3434f6de-d7d5-46e9-9ae2-c78c7007d4b2"
+input = 0
+
+[[library.samples.graph.connections]]
+
+[library.samples.graph.connections.from]
+from = "node_output"
+node = "3434f6de-d7d5-46e9-9ae2-c78c7007d4b2"
+output = 0
+
+[library.samples.graph.connections.to]
+to = "node_input"
+node = "00ff1353-b578-4e9a-8f79-7c2841b9a70c"
+input = 0
+
+[library.samples.trigger]
+release = 0.0
+
+[library.samples.bounce]
+asset = "a2a35dd3-ce2f-4fc9-a402-9361d24a806f"
+source_hash = 1247161466264089151
+
+[[library.samples]]
+id = "ec70ad1d-41b8-4ffd-a11a-b472a60e83c5"
+name = "Kick"
+kind = "sound"
+
+[[library.samples.graph.nodes]]
+id = "f9ff3b05-0318-4cee-9a8f-8c5e23a04cda"
+
+[library.samples.graph.nodes.kind]
+kind = "oscillator"
+
+[library.samples.graph.nodes.kind.props]
+type = "sine"
+
+[library.samples.graph.nodes.kind.props.frequency]
+value = 150.0
+
+[[library.samples.graph.nodes.kind.props.frequency.automation]]
+event = "set_value"
+
+[library.samples.graph.nodes.kind.props.frequency.automation.args]
+value = 150.0
+time = 0.0
+
+[[library.samples.graph.nodes.kind.props.frequency.automation]]
+event = "exponential_ramp"
+
+[library.samples.graph.nodes.kind.props.frequency.automation.args]
+value = 50.0
+time = 0.12
+
+[library.samples.graph.nodes.kind.props.detune]
+value = 0.0
+
+[[library.samples.graph.nodes]]
+id = "f77f61eb-8eec-4710-a82a-9d8cee9dc6a6"
+
+[library.samples.graph.nodes.kind]
+kind = "gain"
+
+[library.samples.graph.nodes.kind.props.gain]
+value = 0.00009999999747378752
+
+[[library.samples.graph.nodes.kind.props.gain.automation]]
+event = "set_value"
+
+[library.samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.0
+
+[[library.samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[library.samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.949999988079071
+time = 0.002
+
+[[library.samples.graph.nodes.kind.props.gain.automation]]
+event = "exponential_ramp"
+
+[library.samples.graph.nodes.kind.props.gain.automation.args]
+value = 0.00009999999747378752
+time = 0.28200000000000003
+
+[[library.samples.graph.connections]]
+
+[library.samples.graph.connections.from]
+from = "node_output"
+node = "f9ff3b05-0318-4cee-9a8f-8c5e23a04cda"
+output = 0
+
+[library.samples.graph.connections.to]
+to = "node_input"
+node = "f77f61eb-8eec-4710-a82a-9d8cee9dc6a6"
+input = 0
+
+[library.samples.trigger]
+release = 0.0
+
+[library.samples.bounce]
+asset = "f969becc-f4f2-4486-ae81-add3ed1958cd"
+source_hash = 8897850473820195762
+
+[[library.assets.buffers]]
+id = "a2a35dd3-ce2f-4fc9-a402-9361d24a806f"
+label = "Bass (bounce)"
+
+[library.assets.buffers.source]
+kind = "path"
+data = "assets/a2a35dd3-ce2f-4fc9-a402-9361d24a806f.wav"
+
+[[library.assets.buffers]]
+id = "f969becc-f4f2-4486-ae81-add3ed1958cd"
+label = "Kick (bounce)"
+
+[library.assets.buffers.source]
+kind = "path"
+data = "assets/f969becc-f4f2-4486-ae81-add3ed1958cd.wav"
+
+[library.listener.position_x]
+value = 0.0
+
+[library.listener.position_y]
+value = 0.0
+
+[library.listener.position_z]
+value = 0.0
+
+[library.listener.forward_x]
+value = 0.0
+
+[library.listener.forward_y]
+value = 0.0
+
+[library.listener.forward_z]
+value = -1.0
+
+[library.listener.up_x]
+value = 0.0
+
+[library.listener.up_y]
+value = 1.0
+
+[library.listener.up_z]
+value = 0.0
+
+[[layout]]
+id = "1b791202-447e-4032-9c36-000bec206d14"
+x = 70.0
+y = 80.0
+
+[[layout]]
+id = "3434f6de-d7d5-46e9-9ae2-c78c7007d4b2"
+x = 310.0
+y = 80.0
+
+[[layout]]
+id = "00ff1353-b578-4e9a-8f79-7c2841b9a70c"
+x = 550.0
+y = 80.0
+
+[[layout]]
+id = "f9ff3b05-0318-4cee-9a8f-8c5e23a04cda"
+x = 70.0
+y = 80.0
+
+[[layout]]
+id = "f77f61eb-8eec-4710-a82a-9d8cee9dc6a6"
+x = 310.0
+y = 80.0

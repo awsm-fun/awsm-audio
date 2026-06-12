@@ -1,13 +1,13 @@
 version = 1
-root = "8f5e275b-ae45-4b54-a06e-3a870f6ec60c"
+root = "092ea00f-3202-4d4b-9633-40dd7994aafa"
 
 [[samples]]
-id = "8f5e275b-ae45-4b54-a06e-3a870f6ec60c"
+id = "092ea00f-3202-4d4b-9633-40dd7994aafa"
 name = "Chord Stab"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "219e0384-2329-4721-a528-1651cb1d4da5"
+id = "bf5d5f15-96db-4198-898f-f929ad6ee477"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -16,13 +16,13 @@ kind = "gain"
 value = 0.5
 
 [[samples.graph.nodes]]
-id = "29d736ac-2419-4591-b9c8-8bbf1eca1551"
+id = "efd2c978-d1d4-4a3d-ac4d-4a1075acbff8"
 
 [samples.graph.nodes.kind]
 kind = "sample"
 
 [samples.graph.nodes.kind.props]
-sample = "99a410bd-0927-4015-b30c-a9c2f5356ad7"
+sample = "4d087c62-3d1c-486f-a349-de7ae756df98"
 
 [[samples.graph.nodes.kind.props.inputs]]
 port = "pitch"
@@ -33,7 +33,7 @@ port = "cutoff"
 value = 1400.0
 
 [[samples.graph.nodes]]
-id = "c4c3d095-5fd0-454b-a463-74e69673df4e"
+id = "ad2f8a47-4db8-407a-b927-f3d9d0218481"
 
 [samples.graph.nodes.kind]
 kind = "stereo_panner"
@@ -42,13 +42,13 @@ kind = "stereo_panner"
 value = -0.6000000238418579
 
 [[samples.graph.nodes]]
-id = "70fbce78-2308-4714-bfa0-6453abb923c2"
+id = "37bd9aaa-5c1b-4038-b2ad-397136ecb12b"
 
 [samples.graph.nodes.kind]
 kind = "sample"
 
 [samples.graph.nodes.kind.props]
-sample = "99a410bd-0927-4015-b30c-a9c2f5356ad7"
+sample = "4d087c62-3d1c-486f-a349-de7ae756df98"
 
 [[samples.graph.nodes.kind.props.inputs]]
 port = "pitch"
@@ -59,7 +59,7 @@ port = "cutoff"
 value = 1900.0
 
 [[samples.graph.nodes]]
-id = "93313330-3301-4ff1-b989-194234536734"
+id = "695fd373-efe4-43f7-9d61-11013b608c2c"
 
 [samples.graph.nodes.kind]
 kind = "stereo_panner"
@@ -68,13 +68,13 @@ kind = "stereo_panner"
 value = -0.20000000298023224
 
 [[samples.graph.nodes]]
-id = "287fd7d3-77ac-49d9-bff9-c67c14f7a96d"
+id = "5a1c5bd6-1c1f-4990-8897-aecb255b6460"
 
 [samples.graph.nodes.kind]
 kind = "sample"
 
 [samples.graph.nodes.kind.props]
-sample = "99a410bd-0927-4015-b30c-a9c2f5356ad7"
+sample = "4d087c62-3d1c-486f-a349-de7ae756df98"
 
 [[samples.graph.nodes.kind.props.inputs]]
 port = "pitch"
@@ -85,7 +85,7 @@ port = "cutoff"
 value = 2600.0
 
 [[samples.graph.nodes]]
-id = "6bed171a-bb71-48fa-bae8-42b36a31c68c"
+id = "7f5c27d8-cefd-4e15-9b2d-464e1f122181"
 
 [samples.graph.nodes.kind]
 kind = "stereo_panner"
@@ -94,13 +94,13 @@ kind = "stereo_panner"
 value = 0.25
 
 [[samples.graph.nodes]]
-id = "3e252222-b4f9-4e66-adcb-a37820da8331"
+id = "8933e34d-3e70-4184-9c3a-8e5e6a6644b9"
 
 [samples.graph.nodes.kind]
 kind = "sample"
 
 [samples.graph.nodes.kind.props]
-sample = "99a410bd-0927-4015-b30c-a9c2f5356ad7"
+sample = "4d087c62-3d1c-486f-a349-de7ae756df98"
 
 [[samples.graph.nodes.kind.props.inputs]]
 port = "pitch"
@@ -111,7 +111,7 @@ port = "cutoff"
 value = 3400.0
 
 [[samples.graph.nodes]]
-id = "8df28ae9-cc39-41c1-a367-1c2e2274336a"
+id = "52a68e25-a6bd-4e3c-a28e-db31d448dc14"
 
 [samples.graph.nodes.kind]
 kind = "stereo_panner"
@@ -120,13 +120,13 @@ kind = "stereo_panner"
 value = 0.6000000238418579
 
 [[samples.graph.nodes]]
-id = "dfeb4389-b5f3-4450-9ce6-1223654ab11a"
+id = "0cbe0ee1-4be2-4de2-a202-63ef84b6add2"
 
 [samples.graph.nodes.kind]
 kind = "audio_worklet"
 
 [samples.graph.nodes.kind.props]
-module = "0e5ef7d8-f201-4b37-a28d-6087469d9cea"
+module = "a190e2e7-88de-4f37-813c-8e628380f7f1"
 processor_name = "drive"
 
 [[samples.graph.nodes.kind.props.parameters]]
@@ -154,7 +154,7 @@ max = 1.0
 value = 0.699999988079071
 
 [[samples.graph.nodes]]
-id = "8a04d347-33ec-412c-9490-8d847d95a1c8"
+id = "5c6ed894-6c3d-4797-b8b6-ff1f599402e0"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -166,132 +166,132 @@ value = 0.8999999761581421
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "29d736ac-2419-4591-b9c8-8bbf1eca1551"
+node = "efd2c978-d1d4-4a3d-ac4d-4a1075acbff8"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "c4c3d095-5fd0-454b-a463-74e69673df4e"
+node = "ad2f8a47-4db8-407a-b927-f3d9d0218481"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "c4c3d095-5fd0-454b-a463-74e69673df4e"
+node = "ad2f8a47-4db8-407a-b927-f3d9d0218481"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "219e0384-2329-4721-a528-1651cb1d4da5"
+node = "bf5d5f15-96db-4198-898f-f929ad6ee477"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "70fbce78-2308-4714-bfa0-6453abb923c2"
+node = "37bd9aaa-5c1b-4038-b2ad-397136ecb12b"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "93313330-3301-4ff1-b989-194234536734"
+node = "695fd373-efe4-43f7-9d61-11013b608c2c"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "93313330-3301-4ff1-b989-194234536734"
+node = "695fd373-efe4-43f7-9d61-11013b608c2c"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "219e0384-2329-4721-a528-1651cb1d4da5"
+node = "bf5d5f15-96db-4198-898f-f929ad6ee477"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "287fd7d3-77ac-49d9-bff9-c67c14f7a96d"
+node = "5a1c5bd6-1c1f-4990-8897-aecb255b6460"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "6bed171a-bb71-48fa-bae8-42b36a31c68c"
+node = "7f5c27d8-cefd-4e15-9b2d-464e1f122181"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "6bed171a-bb71-48fa-bae8-42b36a31c68c"
+node = "7f5c27d8-cefd-4e15-9b2d-464e1f122181"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "219e0384-2329-4721-a528-1651cb1d4da5"
+node = "bf5d5f15-96db-4198-898f-f929ad6ee477"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "3e252222-b4f9-4e66-adcb-a37820da8331"
+node = "8933e34d-3e70-4184-9c3a-8e5e6a6644b9"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "8df28ae9-cc39-41c1-a367-1c2e2274336a"
+node = "52a68e25-a6bd-4e3c-a28e-db31d448dc14"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "8df28ae9-cc39-41c1-a367-1c2e2274336a"
+node = "52a68e25-a6bd-4e3c-a28e-db31d448dc14"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "219e0384-2329-4721-a528-1651cb1d4da5"
+node = "bf5d5f15-96db-4198-898f-f929ad6ee477"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "219e0384-2329-4721-a528-1651cb1d4da5"
+node = "bf5d5f15-96db-4198-898f-f929ad6ee477"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "dfeb4389-b5f3-4450-9ce6-1223654ab11a"
+node = "0cbe0ee1-4be2-4de2-a202-63ef84b6add2"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "dfeb4389-b5f3-4450-9ce6-1223654ab11a"
+node = "0cbe0ee1-4be2-4de2-a202-63ef84b6add2"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "8a04d347-33ec-412c-9490-8d847d95a1c8"
+node = "5c6ed894-6c3d-4797-b8b6-ff1f599402e0"
 input = 0
 
 [samples.trigger]
 release = 0.0
 
 [[samples]]
-id = "99a410bd-0927-4015-b30c-a9c2f5356ad7"
+id = "4d087c62-3d1c-486f-a349-de7ae756df98"
 name = "Voice"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "59be541f-ee3a-4028-ab23-8122e1e51e99"
+id = "1f10821b-bec4-449b-96f6-3eb058cf9cec"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -306,7 +306,7 @@ value = 220.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "b4a28932-c0b5-41c1-8faa-832cf13f0375"
+id = "ce9c3b55-541d-4c98-8440-892db7d86aa2"
 
 [samples.graph.nodes.kind]
 kind = "biquad_filter"
@@ -327,7 +327,7 @@ value = 7.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "54517709-0308-41ae-ae95-56e43b69254f"
+id = "46526e2b-53a9-4c71-a62c-05e59bae0460"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -364,7 +364,7 @@ port = "pitch"
 
 [samples.graph.connections.to]
 to = "node_param"
-node = "59be541f-ee3a-4028-ab23-8122e1e51e99"
+node = "1f10821b-bec4-449b-96f6-3eb058cf9cec"
 param = "frequency"
 
 [[samples.graph.connections]]
@@ -375,38 +375,38 @@ port = "cutoff"
 
 [samples.graph.connections.to]
 to = "node_param"
-node = "b4a28932-c0b5-41c1-8faa-832cf13f0375"
+node = "ce9c3b55-541d-4c98-8440-892db7d86aa2"
 param = "frequency"
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "59be541f-ee3a-4028-ab23-8122e1e51e99"
+node = "1f10821b-bec4-449b-96f6-3eb058cf9cec"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "b4a28932-c0b5-41c1-8faa-832cf13f0375"
+node = "ce9c3b55-541d-4c98-8440-892db7d86aa2"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "b4a28932-c0b5-41c1-8faa-832cf13f0375"
+node = "ce9c3b55-541d-4c98-8440-892db7d86aa2"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "54517709-0308-41ae-ae95-56e43b69254f"
+node = "46526e2b-53a9-4c71-a62c-05e59bae0460"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "54517709-0308-41ae-ae95-56e43b69254f"
+node = "46526e2b-53a9-4c71-a62c-05e59bae0460"
 output = 0
 
 [samples.graph.connections.to]
@@ -428,7 +428,7 @@ id = "out"
 release = 0.0
 
 [[assets.wasm_modules]]
-id = "0e5ef7d8-f201-4b37-a28d-6087469d9cea"
+id = "a190e2e7-88de-4f37-813c-8e628380f7f1"
 label = "drive"
 
 [assets.wasm_modules.source]

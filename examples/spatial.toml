@@ -1,13 +1,13 @@
 version = 1
-root = "28df08d4-d014-42e5-9edd-36abdb7c3158"
+root = "2ef31091-abf7-489b-9420-9fdc450943c8"
 
 [[samples]]
-id = "28df08d4-d014-42e5-9edd-36abdb7c3158"
+id = "2ef31091-abf7-489b-9420-9fdc450943c8"
 name = "Spatial"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "46d4da8c-23d6-4966-b2d3-0d38b4d687f9"
+id = "27e3c86b-6985-4989-a005-693110cf017d"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -22,7 +22,7 @@ value = 330.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "c2e8eaba-8480-4afd-b420-859ce1bdcdea"
+id = "8c0d00eb-cd74-4b3a-9ea0-5164aa8945cc"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -31,7 +31,7 @@ kind = "gain"
 value = 0.5
 
 [[samples.graph.nodes]]
-id = "aa6b0db1-f5d7-49ec-9a35-6125d8ab82a2"
+id = "12868dbe-b0b5-4f7b-a3ef-d3d96f0e99c3"
 
 [samples.graph.nodes.kind]
 kind = "spatial_output"
@@ -66,24 +66,24 @@ value = -1.5
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "46d4da8c-23d6-4966-b2d3-0d38b4d687f9"
+node = "27e3c86b-6985-4989-a005-693110cf017d"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "c2e8eaba-8480-4afd-b420-859ce1bdcdea"
+node = "8c0d00eb-cd74-4b3a-9ea0-5164aa8945cc"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "c2e8eaba-8480-4afd-b420-859ce1bdcdea"
+node = "8c0d00eb-cd74-4b3a-9ea0-5164aa8945cc"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "aa6b0db1-f5d7-49ec-9a35-6125d8ab82a2"
+node = "12868dbe-b0b5-4f7b-a3ef-d3d96f0e99c3"
 input = 0
 
 [samples.trigger]

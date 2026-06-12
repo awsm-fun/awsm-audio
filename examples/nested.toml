@@ -1,13 +1,13 @@
 version = 1
-root = "a6a96a97-923e-4a05-8564-f61ce34b8c4a"
+root = "1e304a4f-f362-4041-8744-05c1c94e3cae"
 
 [[samples]]
-id = "a6a96a97-923e-4a05-8564-f61ce34b8c4a"
+id = "1e304a4f-f362-4041-8744-05c1c94e3cae"
 name = "Nested"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "6bf53897-0d50-4829-8509-a1a70a670c33"
+id = "6affb394-f5e6-4dab-ba13-22551d8412e0"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -22,16 +22,16 @@ value = 110.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "b36596f6-280a-4d13-b514-590b819aca98"
+id = "172ba286-4e23-4245-ab23-77410d03de58"
 
 [samples.graph.nodes.kind]
 kind = "sample"
 
 [samples.graph.nodes.kind.props]
-sample = "65d83a47-6dd8-4426-9b9d-4abe6dd6324a"
+sample = "a8d66bfe-e1ab-47fb-b763-096b9a2b1e6a"
 
 [[samples.graph.nodes]]
-id = "e9911ca3-d2aa-4a31-9552-998d30edcf56"
+id = "3713a9c1-b7d9-4642-88f8-85793cf5c36a"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -43,36 +43,36 @@ value = 0.5
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "6bf53897-0d50-4829-8509-a1a70a670c33"
+node = "6affb394-f5e6-4dab-ba13-22551d8412e0"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "b36596f6-280a-4d13-b514-590b819aca98"
+node = "172ba286-4e23-4245-ab23-77410d03de58"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "b36596f6-280a-4d13-b514-590b819aca98"
+node = "172ba286-4e23-4245-ab23-77410d03de58"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "e9911ca3-d2aa-4a31-9552-998d30edcf56"
+node = "3713a9c1-b7d9-4642-88f8-85793cf5c36a"
 input = 0
 
 [samples.trigger]
 release = 0.0
 
 [[samples]]
-id = "65d83a47-6dd8-4426-9b9d-4abe6dd6324a"
+id = "a8d66bfe-e1ab-47fb-b763-096b9a2b1e6a"
 name = "Voice"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "cd49be58-5109-428c-a7a8-de328d552be6"
+id = "776d188f-bb96-4e87-9430-611eaf221be6"
 
 [samples.graph.nodes.kind]
 kind = "biquad_filter"
@@ -100,14 +100,14 @@ port = "in"
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "cd49be58-5109-428c-a7a8-de328d552be6"
+node = "776d188f-bb96-4e87-9430-611eaf221be6"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "cd49be58-5109-428c-a7a8-de328d552be6"
+node = "776d188f-bb96-4e87-9430-611eaf221be6"
 output = 0
 
 [samples.graph.connections.to]

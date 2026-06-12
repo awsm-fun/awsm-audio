@@ -1,13 +1,13 @@
 version = 1
-root = "31a895af-bc7d-4a66-a6ac-44ba8e566b9e"
+root = "93fd9bbd-acaa-4fc9-8200-bac50cf322a5"
 
 [[samples]]
-id = "31a895af-bc7d-4a66-a6ac-44ba8e566b9e"
+id = "93fd9bbd-acaa-4fc9-8200-bac50cf322a5"
 name = "Acid Rack"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "e5ed881d-cc4a-41ce-aec3-2ec278758d60"
+id = "b831bd38-ca08-40a5-a1e3-ff9775d2ce39"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -22,7 +22,7 @@ value = 110.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "3c8c74c7-c85e-4b03-ba42-875096cb9ea4"
+id = "c1fb92c4-752a-4130-8a10-4e0382793c1f"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -37,7 +37,7 @@ value = 110.0
 value = 8.0
 
 [[samples.graph.nodes]]
-id = "b82906f8-9321-4a7f-9602-9788cb64a8ba"
+id = "ac085d07-5a40-4d42-a4d1-1c1ed2be92d1"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -46,13 +46,13 @@ kind = "gain"
 value = 0.5
 
 [[samples.graph.nodes]]
-id = "c08f6485-512b-4ab9-86a3-69a16da3f405"
+id = "d8b72c4e-88ba-4931-9f4e-65f95b97a3bd"
 
 [samples.graph.nodes.kind]
 kind = "sample"
 
 [samples.graph.nodes.kind.props]
-sample = "6b467d3d-0cb9-4454-83ff-d1b3b71264b6"
+sample = "9776bad0-d2d8-4f7c-b279-dc597e19ad7b"
 
 [[samples.graph.nodes.kind.props.inputs]]
 port = "crush"
@@ -63,7 +63,7 @@ port = "ring"
 value = 160.0
 
 [[samples.graph.nodes]]
-id = "3072901b-9b40-4458-bcea-79b36c5e6ffb"
+id = "79b27dc3-7afd-4019-884d-69315fb18776"
 
 [samples.graph.nodes.kind]
 kind = "biquad_filter"
@@ -98,7 +98,7 @@ value = 11.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "2abe48a3-a2d7-44e9-8d7b-5012e8d036ed"
+id = "1a1fc5d6-d04d-4e19-a347-1e97e2827740"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -128,7 +128,7 @@ value = 0.00009999999747378752
 time = 1.31
 
 [[samples.graph.nodes]]
-id = "88930a65-6d4a-488e-ab1f-f40b8fd386e3"
+id = "37c9f46e-558a-4709-b4f9-7034f72036f1"
 
 [samples.graph.nodes.kind]
 kind = "delay"
@@ -140,7 +140,7 @@ max_delay_time = 0.5
 value = 0.1899999976158142
 
 [[samples.graph.nodes]]
-id = "5e804a98-3042-4157-bf77-c383a53159a3"
+id = "2df41ae7-829f-4d8b-a27a-5588d2dfa518"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -149,7 +149,7 @@ kind = "gain"
 value = 0.30000001192092896
 
 [[samples.graph.nodes]]
-id = "2849e547-73e1-4f00-9087-0aa0e833f149"
+id = "60e0a237-cf12-4379-8c79-7020ae181e1b"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -158,7 +158,7 @@ kind = "gain"
 value = 0.8999999761581421
 
 [[samples.graph.nodes]]
-id = "0b4d772f-bcd9-48d0-87e1-489b0b3aacd9"
+id = "c3d27583-7922-488d-aeb9-2f08819de5ef"
 
 [samples.graph.nodes.kind]
 kind = "oscillator"
@@ -173,7 +173,7 @@ value = 5.0
 value = 0.0
 
 [[samples.graph.nodes]]
-id = "fbf81698-54d8-4a11-8e76-c538687d167b"
+id = "ba86d031-be22-4803-a124-55462896898c"
 
 [samples.graph.nodes.kind]
 kind = "gain"
@@ -185,150 +185,150 @@ value = 700.0
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "e5ed881d-cc4a-41ce-aec3-2ec278758d60"
+node = "b831bd38-ca08-40a5-a1e3-ff9775d2ce39"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "b82906f8-9321-4a7f-9602-9788cb64a8ba"
+node = "ac085d07-5a40-4d42-a4d1-1c1ed2be92d1"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "3c8c74c7-c85e-4b03-ba42-875096cb9ea4"
+node = "c1fb92c4-752a-4130-8a10-4e0382793c1f"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "b82906f8-9321-4a7f-9602-9788cb64a8ba"
+node = "ac085d07-5a40-4d42-a4d1-1c1ed2be92d1"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "b82906f8-9321-4a7f-9602-9788cb64a8ba"
+node = "ac085d07-5a40-4d42-a4d1-1c1ed2be92d1"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "c08f6485-512b-4ab9-86a3-69a16da3f405"
+node = "d8b72c4e-88ba-4931-9f4e-65f95b97a3bd"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "c08f6485-512b-4ab9-86a3-69a16da3f405"
+node = "d8b72c4e-88ba-4931-9f4e-65f95b97a3bd"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "3072901b-9b40-4458-bcea-79b36c5e6ffb"
+node = "79b27dc3-7afd-4019-884d-69315fb18776"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "3072901b-9b40-4458-bcea-79b36c5e6ffb"
+node = "79b27dc3-7afd-4019-884d-69315fb18776"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "2abe48a3-a2d7-44e9-8d7b-5012e8d036ed"
+node = "1a1fc5d6-d04d-4e19-a347-1e97e2827740"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "2abe48a3-a2d7-44e9-8d7b-5012e8d036ed"
+node = "1a1fc5d6-d04d-4e19-a347-1e97e2827740"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "2849e547-73e1-4f00-9087-0aa0e833f149"
+node = "60e0a237-cf12-4379-8c79-7020ae181e1b"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "2abe48a3-a2d7-44e9-8d7b-5012e8d036ed"
+node = "1a1fc5d6-d04d-4e19-a347-1e97e2827740"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "88930a65-6d4a-488e-ab1f-f40b8fd386e3"
+node = "37c9f46e-558a-4709-b4f9-7034f72036f1"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "88930a65-6d4a-488e-ab1f-f40b8fd386e3"
+node = "37c9f46e-558a-4709-b4f9-7034f72036f1"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "5e804a98-3042-4157-bf77-c383a53159a3"
+node = "2df41ae7-829f-4d8b-a27a-5588d2dfa518"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "5e804a98-3042-4157-bf77-c383a53159a3"
+node = "2df41ae7-829f-4d8b-a27a-5588d2dfa518"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "2849e547-73e1-4f00-9087-0aa0e833f149"
+node = "60e0a237-cf12-4379-8c79-7020ae181e1b"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "0b4d772f-bcd9-48d0-87e1-489b0b3aacd9"
+node = "c3d27583-7922-488d-aeb9-2f08819de5ef"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "fbf81698-54d8-4a11-8e76-c538687d167b"
+node = "ba86d031-be22-4803-a124-55462896898c"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "fbf81698-54d8-4a11-8e76-c538687d167b"
+node = "ba86d031-be22-4803-a124-55462896898c"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_param"
-node = "3072901b-9b40-4458-bcea-79b36c5e6ffb"
+node = "79b27dc3-7afd-4019-884d-69315fb18776"
 param = "frequency"
 
 [samples.trigger]
 release = 0.0
 
 [[samples]]
-id = "6b467d3d-0cb9-4454-83ff-d1b3b71264b6"
+id = "9776bad0-d2d8-4f7c-b279-dc597e19ad7b"
 name = "FX Rack"
 kind = "sound"
 
 [[samples.graph.nodes]]
-id = "9570decd-5f32-4b2c-bf41-b55dda016a22"
+id = "b8834f29-03a2-4c32-8e21-c98579034cc0"
 
 [samples.graph.nodes.kind]
 kind = "audio_worklet"
 
 [samples.graph.nodes.kind.props]
-module = "10d08147-49d5-4f39-a31d-c8cacf7288b5"
+module = "b6e8fe21-2920-4bbb-8bd8-bf2fa1135680"
 processor_name = "bitcrusher"
 
 [[samples.graph.nodes.kind.props.parameters]]
@@ -348,13 +348,13 @@ max = 32.0
 value = 4.0
 
 [[samples.graph.nodes]]
-id = "1a018c10-14d8-40f6-a47e-058a8567f1ca"
+id = "8b81465b-9695-4b0f-9544-e108754ddf9f"
 
 [samples.graph.nodes.kind]
 kind = "audio_worklet"
 
 [samples.graph.nodes.kind.props]
-module = "b9c80906-fc70-43b3-bf4a-cb07acaf4c6a"
+module = "c094ec42-b6e2-4018-ad5f-84b26def890b"
 processor_name = "ringmod"
 
 [[samples.graph.nodes.kind.props.parameters]]
@@ -381,26 +381,26 @@ port = "in"
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "9570decd-5f32-4b2c-bf41-b55dda016a22"
+node = "b8834f29-03a2-4c32-8e21-c98579034cc0"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "9570decd-5f32-4b2c-bf41-b55dda016a22"
+node = "b8834f29-03a2-4c32-8e21-c98579034cc0"
 output = 0
 
 [samples.graph.connections.to]
 to = "node_input"
-node = "1a018c10-14d8-40f6-a47e-058a8567f1ca"
+node = "8b81465b-9695-4b0f-9544-e108754ddf9f"
 input = 0
 
 [[samples.graph.connections]]
 
 [samples.graph.connections.from]
 from = "node_output"
-node = "1a018c10-14d8-40f6-a47e-058a8567f1ca"
+node = "8b81465b-9695-4b0f-9544-e108754ddf9f"
 output = 0
 
 [samples.graph.connections.to]
@@ -415,7 +415,7 @@ port = "crush"
 
 [samples.graph.connections.to]
 to = "node_param"
-node = "9570decd-5f32-4b2c-bf41-b55dda016a22"
+node = "b8834f29-03a2-4c32-8e21-c98579034cc0"
 param = "bits"
 
 [[samples.graph.connections]]
@@ -426,7 +426,7 @@ port = "ring"
 
 [samples.graph.connections.to]
 to = "node_param"
-node = "1a018c10-14d8-40f6-a47e-058a8567f1ca"
+node = "8b81465b-9695-4b0f-9544-e108754ddf9f"
 param = "freq"
 
 [[samples.graph.inlets]]
@@ -447,7 +447,7 @@ id = "out"
 release = 0.0
 
 [[assets.wasm_modules]]
-id = "10d08147-49d5-4f39-a31d-c8cacf7288b5"
+id = "b6e8fe21-2920-4bbb-8bd8-bf2fa1135680"
 label = "bitcrusher"
 
 [assets.wasm_modules.source]
@@ -455,7 +455,7 @@ kind = "base64"
 data = "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YW1lX3B0cgoKcGFyYW1zX3B0cgsHcHJvY2VzcwxLX1JOdk50TnRDc2dYR3A1T3F4Mk55XzRjb3JlOXBhbmlja2luZzExcGFuaWNfY29uc3QyM3BhbmljX2NvbnN0X3JlbV9ieV96ZXJvDS1fUk52TnRDc2dYR3A1T3F4Mk55XzRjb3JlOXBhbmlja2luZzlwYW5pY19mbXQOLl9STnZDc2ZMZnk2RUkxNWlMXzdfX19ydXN0YzE3cnVzdF9iZWdpbl91bndpbmQPP19STnZYc2lfTnROdE50Q3NnWEdwNU9xeDJOeV80Y29yZTNmbXQzbnVtM2ltcGpOdEI5XzdEaXNwbGF5M2ZtdBBOX1JOdk52TXNhX050Q3NnWEdwNU9xeDJOeV80Y29yZTNmbXROdEI3XzlGb3JtYXR0ZXIxMnBhZF9pbnRlZ3JhbDEyd3JpdGVfcHJlZml4EXVfUk52WUlOdE52TnRDc2ViSGNhZW9Tcnh5XzNzdGQ5cGFuaWNraW5nMTFiZWdpbl9wYW5pYzdQYXlsb2FkUmVFTnROdENzZ1hHcDVPcXgyTnlfNGNvcmU1cGFuaWMxMlBhbmljUGF5bG9hZDZhc19zdHJCOV8SM19STnZOdENzZWJIY2Flb1NyeHlfM3N0ZDlwYW5pY2tpbmcxNXBhbmljX3dpdGhfaG9vaxMnX1JOdkNzZkxmeTZFSTE1aUxfN19fX3J1c3RjMTBydXN0X3BhbmljFG5fUklOdk50TnRDc2ViSGNhZW9Tcnh5XzNzdGQzc3lzOWJhY2t0cmFjZTI2X19fcnVzdF9lbmRfc2hvcnRfYmFja3RyYWNlTkNOdk50QjZfOXBhbmlja2luZzEzcGFuaWNfaGFuZGxlcjB6RUI2XxU3X1JOQ052TnRDc2ViSGNhZW9Tcnh5XzNzdGQ5cGFuaWNraW5nMTNwYW5pY19oYW5kbGVyMEI1XxaAAV9STnZYczFfTnZOdENzZWJIY2Flb1NyeHlfM3N0ZDlwYW5pY2tpbmcxM3BhbmljX2hhbmRsZXJOdEI1XzE2U3RhdGljU3RyUGF5bG9hZE50TnRDc2dYR3A1T3F4Mk55XzRjb3JlNXBhbmljMTJQYW5pY1BheWxvYWQ2YXNfc3RyFwZyb3VuZGYYBWZtYXhmBxIBAA9fX3N0YWNrX3BvaW50ZXIJCgEABy5yb2RhdGEATQlwcm9kdWNlcnMCCGxhbmd1YWdlAQRSdXN0AAxwcm9jZXNzZWQtYnkBBXJ1c3RjHTEuOTUuMCAoNTk4MDc2MTZlIDIwMjYtMDQtMTQpAJQBD3RhcmdldF9mZWF0dXJlcwgrC2J1bGstbWVtb3J5Kw9idWxrLW1lbW9yeS1vcHQrFmNhbGwtaW5kaXJlY3Qtb3ZlcmxvbmcrCm11bHRpdmFsdWUrD211dGFibGUtZ2xvYmFscysTbm9udHJhcHBpbmctZnB0b2ludCsPcmVmZXJlbmNlLXR5cGVzKwhzaWduLWV4dA=="
 
 [[assets.wasm_modules]]
-id = "b9c80906-fc70-43b3-bf4a-cb07acaf4c6a"
+id = "c094ec42-b6e2-4018-ad5f-84b26def890b"
 label = "ringmod"
 
 [assets.wasm_modules.source]
