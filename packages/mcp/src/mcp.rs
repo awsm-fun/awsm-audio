@@ -228,6 +228,24 @@ pub struct SetAutomationParams {
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct AutomationItem {
+    /// Target node id.
+    pub node: NodeId,
+    /// The AudioParam field key to automate (e.g. `"gain"`, `"frequency"`).
+    pub param: String,
+    /// The complete scheduled timeline for that param (REPLACES existing events).
+    pub events: Vec<AutomationEvent>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct SetAutomationsParams {
+    /// One `{node, param, events}` per AudioParam to set, applied in order in a
+    /// single round-trip. Items may target different nodes (and, since edits act
+    /// by node id, different samples).
+    pub items: Vec<AutomationItem>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct ValidateParams {
     /// Commands to validate without dispatching — the same shapes
     /// dispatch_batch / dispatch_refs accept, including `"ref"` labels,
@@ -751,6 +769,21 @@ pub struct ScaleVelocitiesParams {
     pub track: usize,
     /// Multiplier applied to every velocity, clamped to 1..=127.
     pub factor: f32,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct SwingTrackParams {
+    pub node: NodeId,
+    pub track: usize,
+    /// The swing subdivision in beats — the grid whose off-positions get delayed.
+    /// e.g. 0.5 swings eighth-notes, 0.25 swings sixteenths. A swing "pair" spans
+    /// 2× this. Must be > 0.
+    pub grid_beats: f64,
+    /// Swing ratio in [0.5, 1.0]. 0.5 = straight (no change); higher delays each
+    /// off-grid note toward the next downbeat (e.g. 0.667 = triplet feel). Clamped
+    /// to [0.5, 1.0]. The ratio, the grid, and whether to swing at all are YOUR
+    /// call — the server only applies the offset math (no built-in groove preset).
+    pub ratio: f64,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -1321,6 +1354,41 @@ impl EditorMcp {
         .await
     }
 
+    #[tool(
+        description = "Batch form of set_automation: set many AudioParam timelines \
+        (across one or more nodes/samples) in a single round-trip. Pass `items`, \
+        each `{node, param, events}`. Cuts the per-param round-trips of authoring a \
+        full envelope/automation pass. Returns per-item ok/error."
+    )]
+    async fn set_automations(
+        &self,
+        Parameters(p): Parameters<SetAutomationsParams>,
+    ) -> Result<CallToolResult, McpError> {
+        if p.items.is_empty() {
+            return Err(McpError::invalid_params(
+                "set_automations needs a non-empty `items` array",
+                None,
+            ));
+        }
+        let cmds: Vec<EditorCommand> = p
+            .items
+            .into_iter()
+            .map(|it| EditorCommand::SetAutomation {
+                id: it.node,
+                param: it.param,
+                events: it.events,
+            })
+            .collect();
+        match self.req(Request::DispatchBatch(cmds)).await? {
+            Response::Batch(items) => Ok(text(
+                serde_json::json!({ "ok": true, "results": items }).to_string(),
+            )),
+            Response::Ok => Ok(text(serde_json::json!({ "ok": true }).to_string())),
+            Response::Err(e) => Err(McpError::internal_error(e, None)),
+            other => Err(unexpected(other)),
+        }
+    }
+
     #[tool(description = "Replace all notes on one Note Sequencer track in one \
         call. This is the typed wrapper for edit_song/set_track_events, useful \
         for authoring full patterns without raw dispatch payloads.")]
@@ -1420,6 +1488,40 @@ impl EditorMcp {
                 e
             })
             .collect();
+        self.dispatch(EditorCommand::EditSong {
+            node: p.node,
+            op: SongOp::SetTrackEvents {
+                track: p.track,
+                events,
+            },
+        })
+        .await
+    }
+
+    #[tool(
+        description = "Apply a neutral swing/shuffle timing offset to one Note \
+        Sequencer track: every off-grid note (the off-beats of `grid_beats`) is \
+        delayed toward the next downbeat by `(2*ratio - 1) * grid_beats`. This is \
+        the mechanism only — YOU pick the grid (e.g. 0.5 = eighths), the ratio \
+        (0.5 = straight, 0.667 = triplet feel), and whether to use it at all; there \
+        is no built-in groove preset. Deterministic (unlike humanize_track's \
+        jitter). Compose with humanize_track for feel + variation."
+    )]
+    async fn swing_track(
+        &self,
+        Parameters(p): Parameters<SwingTrackParams>,
+    ) -> Result<CallToolResult, McpError> {
+        if p.grid_beats <= 0.0 {
+            return Err(McpError::invalid_params(
+                "grid_beats must be greater than 0",
+                None,
+            ));
+        }
+        let events = match self.query_result(EditorQuery::Snapshot).await? {
+            QueryResult::Snapshot(s) => snapshot_track_events(&s, p.node, p.track)?,
+            other => return Err(unexpected_query(other)),
+        };
+        let events = apply_swing(events, p.grid_beats, p.ratio);
         self.dispatch(EditorCommand::EditSong {
             node: p.node,
             op: SongOp::SetTrackEvents {
@@ -4633,6 +4735,34 @@ fn parse_sample_id(s: &str) -> Result<SampleId, McpError> {
         .map_err(|e| McpError::internal_error(format!("bad sample id {s}: {e}"), None))
 }
 
+/// Apply a neutral swing offset to note starts: delay every off-grid note toward
+/// the next downbeat by `(2*ratio - 1) * grid_beats`. A note's grid position is
+/// the nearest multiple of `grid_beats`; odd positions (the off-beats) are the
+/// ones delayed. `ratio = 0.5` is straight (no change). Pure math, so the server
+/// only applies the offset — the grid, the ratio, and whether to swing at all are
+/// the caller's musical decision (no built-in groove preset).
+fn apply_swing(events: Vec<NoteEvent>, grid_beats: f64, ratio: f64) -> Vec<NoteEvent> {
+    if grid_beats <= 0.0 {
+        return events;
+    }
+    let r = ratio.clamp(0.5, 1.0);
+    let delay = (2.0 * r - 1.0) * grid_beats;
+    if delay == 0.0 {
+        return events;
+    }
+    events
+        .into_iter()
+        .map(|mut e| {
+            // Nearest grid index; odd indices are the off-beats that get delayed.
+            let idx = (e.start / grid_beats).round() as i64;
+            if idx.rem_euclid(2) == 1 {
+                e.start = (e.start + delay).max(0.0);
+            }
+            e
+        })
+        .collect()
+}
+
 fn snapshot_track_events(
     snap: &awsm_audio_editor_protocol::EditorSnapshot,
     node: NodeId,
@@ -5228,6 +5358,49 @@ mod tests {
         ]))
         .expect("documented automation event shapes decode");
         assert_eq!(events.len(), 5);
+    }
+
+    #[test]
+    fn swing_delays_offbeats_only() {
+        // Eighth-note grid (0.5), triplet-ish ratio 0.667 → delay = (2*.667-1)*.5
+        // = 0.167. Downbeats (idx 0,2) unchanged; off-beats (idx 1,3) delayed.
+        let n = |start: f64| NoteEvent {
+            start,
+            length: 0.25,
+            note: 60,
+            velocity: 100,
+        };
+        let out = apply_swing(vec![n(0.0), n(0.5), n(1.0), n(1.5)], 0.5, 0.667);
+        assert!((out[0].start - 0.0).abs() < 1e-9, "downbeat 0 unchanged");
+        assert!(
+            (out[1].start - 0.667).abs() < 1e-3,
+            "offbeat delayed: {}",
+            out[1].start
+        );
+        assert!((out[2].start - 1.0).abs() < 1e-9, "downbeat 2 unchanged");
+        assert!(
+            (out[3].start - 1.667).abs() < 1e-3,
+            "offbeat delayed: {}",
+            out[3].start
+        );
+    }
+
+    #[test]
+    fn swing_straight_ratio_is_identity() {
+        let n = |start: f64| NoteEvent {
+            start,
+            length: 0.25,
+            note: 60,
+            velocity: 100,
+        };
+        let input = vec![n(0.0), n(0.5), n(1.0)];
+        let out = apply_swing(input.clone(), 0.5, 0.5);
+        for (a, b) in input.iter().zip(out.iter()) {
+            assert_eq!(a.start, b.start, "ratio 0.5 leaves starts unchanged");
+        }
+        // A non-positive grid is a no-op (guarded), not a panic.
+        let out2 = apply_swing(input.clone(), 0.0, 0.7);
+        assert_eq!(out2.len(), input.len());
     }
 
     #[test]

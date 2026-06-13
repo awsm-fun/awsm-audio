@@ -87,10 +87,17 @@ closest-safe behavior was chosen instead).
   get_snapshot description that a non-empty `automation` overrides the base `value`.
   Regression test `snapshot_preserves_param_automation`.
 - [ ] #8 No per-placement variation — "bounce K seeded variations" helper (SFX + tiling) — TODO
-- [ ] #9 [music] No swing/shuffle timing primitive (neutral ratio+grid offset) — TODO
+- [x] #9 [music] No swing/shuffle timing primitive — DONE: added `swing_track` tool
+  (grid_beats + ratio) backed by the pure `apply_swing` (delays off-grid notes by
+  `(2*ratio-1)*grid`). Style-agnostic: the server only does the offset math, no
+  preset. Tests `swing_delays_offbeats_only`, `swing_straight_ratio_is_identity`.
 - [ ] #10 No arrangement-level / output-stage processing (master insert chain) — TODO
-- [ ] #11 Batch param setting (set_automations plural) — TODO
-- [ ] #12 [music] `set_track_gains` (plural) referenced but only singular exists — TODO
+- [x] #11 Batch param setting — DONE: added `set_automations` (many `{node,param,events}`
+  in one DispatchBatch round-trip, per-item ok/error; cross-sample via dispatch_remote).
+  Inline AudioParam values in add_node/add_chain props already stick now that #1 is fixed.
+- [x] #12 [music] `set_track_gains` (plural) — DONE (already present): the batch tool
+  exists (mcp.rs ~1915) and the arrangement recommendation hint already references it
+  (mcp.rs ~2843). Verified; the report's complaint is resolved in current code.
 
 ### P3 — Smaller notes
 - [ ] P3-a DC offset from asymmetric saturation — `wave_shaper` DC-blocker option (+doc) — TODO
