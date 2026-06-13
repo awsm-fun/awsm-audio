@@ -1665,9 +1665,11 @@ impl EditorMcp {
         `duration_secs` to instead render and store an exact unfolded span (e.g. \
         a fixed window of a procedural / worklet / buffer source). Blocks until \
         the render lands or a ~30 s safety timeout (no manual polling), then \
-        returns {stored_duration_secs, rendered_duration_secs, peak, rms, \
-        clipping} — so you see immediately whether it clipped (peak > 1.0) \
-        without a separate wav_stats call. On timeout it returns the last \
+        returns {stored_duration_secs, rendered_duration_secs, peak, true_peak, \
+        rms, clipping} — so you see immediately whether it clipped (peak > 1.0) \
+        without a separate wav_stats call. When it clips (e.g. N stacked voices \
+        sum hot) the result also includes `suggested_gain` (a level scale to apply \
+        and re-bounce) and a `hint`. On timeout it returns the last \
         status; re-check get_bounce_status / list_assets."
     )]
     async fn bounce(
@@ -1724,22 +1726,36 @@ impl EditorMcp {
                     QueryResult::WavStats(s) => s,
                     other => return Err(unexpected_query(other)),
                 };
-                return Ok(text(
-                    serde_json::json!({
-                        "status": "clean",
-                        "sample": p.sample,
-                        // What plays from arrangements (the stored asset)…
-                        "stored_duration_secs": stats.duration_secs,
-                        // …vs what the offline render ran (loop + tail for a
-                        // sequence; identical when duration_secs was passed).
-                        "rendered_duration_secs": rendered_duration,
-                        "duration_secs": stats.duration_secs,
-                        "peak": stats.peak,
-                        "rms": stats.rms,
-                        "clipping": stats.clipping,
-                    })
-                    .to_string(),
-                ));
+                // Hot-stack hint (#4): when the bounce clips (N simultaneous voices
+                // sum past 1.0), suggest a gain scale to apply and re-bounce, so the
+                // agent needn't find it by trial. Neutral arithmetic; where to apply
+                // it (sequencer output_gain / a pre-output gain / track gain) is the
+                // agent's call.
+                let suggested_gain = suggested_gain_for_peak(stats.peak);
+                let mut result = serde_json::json!({
+                    "status": "clean",
+                    "sample": p.sample,
+                    // What plays from arrangements (the stored asset)…
+                    "stored_duration_secs": stats.duration_secs,
+                    // …vs what the offline render ran (loop + tail for a
+                    // sequence; identical when duration_secs was passed).
+                    "rendered_duration_secs": rendered_duration,
+                    "duration_secs": stats.duration_secs,
+                    "peak": stats.peak,
+                    "true_peak": stats.true_peak,
+                    "rms": stats.rms,
+                    "clipping": stats.clipping,
+                });
+                if let Some(g) = suggested_gain {
+                    result["suggested_gain"] = serde_json::json!(g);
+                    result["hint"] = serde_json::json!(format!(
+                        "peak {:.3} clips (>1.0): scale the level by ~{g} (e.g. \
+                         sequencer output_gain, a pre-output gain node, or arrangement \
+                         track gain) and re-bounce.",
+                        stats.peak
+                    ));
+                }
+                return Ok(text(result.to_string()));
             }
             // Fail fast instead of waiting out the timeout when the render crashed
             // (e.g. an offline-unsupported node). The status names the offender.
@@ -4735,6 +4751,20 @@ fn parse_sample_id(s: &str) -> Result<SampleId, McpError> {
         .map_err(|e| McpError::internal_error(format!("bad sample id {s}: {e}"), None))
 }
 
+/// A suggested output-gain scale to bring a hot bounce under the ceiling, leaving
+/// a little headroom (target ~0.95). `None` when the peak is already safe. Neutral
+/// arithmetic — the caller decides whether/where to apply it (a sequencer
+/// output_gain, a pre-output gain node, or arrangement track gain).
+fn suggested_gain_for_peak(peak: f32) -> Option<f32> {
+    const TARGET: f32 = 0.95;
+    if peak > 1.0 && peak.is_finite() {
+        // Round to 3 decimals so the hint reads cleanly.
+        Some(((TARGET / peak) * 1000.0).round() / 1000.0)
+    } else {
+        None
+    }
+}
+
 /// Apply a neutral swing offset to note starts: delay every off-grid note toward
 /// the next downbeat by `(2*ratio - 1) * grid_beats`. A note's grid position is
 /// the nearest multiple of `grid_beats`; odd positions (the off-beats) are the
@@ -5358,6 +5388,18 @@ mod tests {
         ]))
         .expect("documented automation event shapes decode");
         assert_eq!(events.len(), 5);
+    }
+
+    #[test]
+    fn suggested_gain_only_when_hot() {
+        assert_eq!(suggested_gain_for_peak(0.9), None);
+        assert_eq!(suggested_gain_for_peak(1.0), None);
+        // peak 3.7 → ~0.95/3.7 ≈ 0.257 (the report's worked example).
+        let g = suggested_gain_for_peak(3.7).expect("hot peak suggests a gain");
+        assert!((g - 0.257).abs() < 0.005, "suggested gain {g}");
+        // Applying the suggestion brings the peak back under 1.0.
+        assert!(3.7 * g <= 1.0);
+        assert_eq!(suggested_gain_for_peak(f32::INFINITY), None);
     }
 
     #[test]

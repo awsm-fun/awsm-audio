@@ -55,7 +55,11 @@ closest-safe behavior was chosen instead).
   Documented set_field's AudioParam-base semantics in the tool description + instructions.
 
 ### P1 — Footguns / guardrails
-- [ ] #4 No clip/level warning at bounce for hot stacks (suggested-gain / auto-normalize) — TODO
+- [x] #4 No clip/level warning at bounce for hot stacks — DONE: the bounce result now
+  includes `suggested_gain` (~0.95/peak) + a `hint` whenever the bounce clips, and
+  `true_peak`. Pure `suggested_gain_for_peak` (tested). Chose the report's suggested-gain
+  hint over auto-normalize-on-bounce: the latter needs editor support to rescale a stored
+  bounce (no such primitive), and the hint is neutral + leaves *where* to apply it to the agent.
 - [x] #5 [doc] Pitch-tracking limitation undocumented — DONE: new "Pitch tracking"
   section in INSTRUMENTS_DOC + a section in WORKLET_ABI_DOC. States plainly only
   oscillators transpose (verified against `schema::Graph::transposed`); samples/
