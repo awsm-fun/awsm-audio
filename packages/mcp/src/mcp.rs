@@ -5759,9 +5759,10 @@ mod tests {
             .expect("remove_node decodes {node: <uuid>}");
         assert_eq!(arg.node.to_string(), id);
 
-        let sf: SetFieldParams =
-            serde_json::from_value(serde_json::json!({ "node": id, "key": "frequency", "value": 220 }))
-                .expect("set_field decodes {node, key, value}");
+        let sf: SetFieldParams = serde_json::from_value(
+            serde_json::json!({ "node": id, "key": "frequency", "value": 220 }),
+        )
+        .expect("set_field decodes {node, key, value}");
         assert_eq!(sf.node.to_string(), id);
         assert_eq!(sf.key, "frequency");
 
@@ -5793,8 +5794,14 @@ mod tests {
             .iter()
             .any(|b| b.get("type").and_then(Value::as_str) == Some("string"));
         let has_object = branches.iter().any(|b| b.get("$ref").is_some());
-        assert!(has_string, "schema must offer the bare-string kind form: {schema}");
-        assert!(has_object, "schema must still offer the full NodeKind object form");
+        assert!(
+            has_string,
+            "schema must offer the bare-string kind form: {schema}"
+        );
+        assert!(
+            has_object,
+            "schema must still offer the full NodeKind object form"
+        );
     }
 
     /// The `set_field` `value` schema must match what the handler accepts — a
@@ -5818,7 +5825,10 @@ mod tests {
         );
         // The doc-comment description must survive the custom schema.
         assert!(
-            value.get("description").and_then(Value::as_str).is_some_and(|d| d.contains("number")),
+            value
+                .get("description")
+                .and_then(Value::as_str)
+                .is_some_and(|d| d.contains("number")),
             "value keeps its description: {value}"
         );
     }
@@ -5873,17 +5883,25 @@ mod tests {
 
         // add_node — bare-string `kind` (the Bug #2 form) must reach the handler.
         let out = mcp
-            .add_node(extract(serde_json::json!({"kind":"oscillator","x":1.0,"y":2.0})))
+            .add_node(extract(
+                serde_json::json!({"kind":"oscillator","x":1.0,"y":2.0}),
+            ))
             .await
             .expect("add_node call succeeds");
         match seen_rx.recv().await.unwrap() {
             EditorCommand::AddNode { kind, x, y } => {
-                assert!(matches!(kind, NodeKind::Oscillator(_)), "kind arrived populated");
+                assert!(
+                    matches!(kind, NodeKind::Oscillator(_)),
+                    "kind arrived populated"
+                );
                 assert_eq!((x, y), (1.0, 2.0), "x/y arrived populated");
             }
             other => panic!("editor received {other:?}, not AddNode"),
         }
-        assert!(format!("{out:?}").contains(minted), "minted id echoed to caller");
+        assert!(
+            format!("{out:?}").contains(minted),
+            "minted id echoed to caller"
+        );
 
         // set_field — {node, key, value:220}; the report's decisive multi-arg case.
         mcp.set_field(extract(
@@ -5919,7 +5937,10 @@ mod tests {
     fn command_schema_stays_object_only() {
         let schema = tool_input_schema::<CommandParams>();
         let cmd_ref = schema["properties"]["command"]["$ref"].as_str().unwrap();
-        assert_eq!(cmd_ref, "#/$defs/EditorCommand", "no Flexible_ wrapper for commands");
+        assert_eq!(
+            cmd_ref, "#/$defs/EditorCommand",
+            "no Flexible_ wrapper for commands"
+        );
         let defs = schema.get("$defs").and_then(Value::as_object).unwrap();
         assert!(
             !defs.keys().any(|k| k.starts_with("Flexible")),
