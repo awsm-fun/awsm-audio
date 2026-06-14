@@ -439,7 +439,22 @@ pub struct SetFieldParams {
     /// The value: a number (most fields), a string (a choice/text field like an
     /// oscillator `type`), or a bool. The right `FieldValue` is chosen from the
     /// JSON type.
+    #[schemars(schema_with = "scalar_field_value_schema")]
     pub value: serde_json::Value,
+}
+
+/// Schema for `set_field`'s `value`: the kept-flexible `serde_json::Value` decodes
+/// any JSON, but the handler only accepts a number / string / bool. Advertise
+/// exactly that so a schema-validating client sends a valid scalar up front
+/// instead of an object/array the handler rejects only at dispatch time.
+fn scalar_field_value_schema(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    schemars::json_schema!({
+        "anyOf": [
+            { "type": "number" },
+            { "type": "string" },
+            { "type": "boolean" }
+        ]
+    })
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
@@ -594,9 +609,9 @@ pub struct RenameSampleParams {
 pub struct AddClipParams {
     /// Track index (0-based) in the active arrangement.
     pub track: usize,
-    /// Clip start on the timeline, in seconds. Give exactly one of `start`,
-    /// `start_beats`, or `start_bars` (the beat/bar forms use the arrangement's
-    /// BPM, so no hand-conversion / float drift).
+    /// Clip start on the timeline, in seconds. Give at most one of `start`,
+    /// `start_beats`, or `start_bars` (omit all to start at 0s); the beat/bar
+    /// forms use the arrangement's BPM, so no hand-conversion / float drift.
     #[serde(default)]
     pub start: Option<f64>,
     /// Clip start in beats (converted with the active arrangement's BPM).
@@ -5441,6 +5456,13 @@ pub trait FromBareName: Sized {
     fn from_bare_name(_name: &str) -> Option<Self> {
         None
     }
+    /// Whether a bare (non-JSON) string is an accepted input form. Drives the
+    /// published JSON Schema to advertise the string shorthand alongside the
+    /// object form, so the schema matches the param docs and schema-validating
+    /// clients accept e.g. `add_node {kind:"oscillator"}`. Default: object-only.
+    fn accepts_bare_name() -> bool {
+        false
+    }
     /// A hint appended to decode errors (e.g. the accepted tag list).
     fn bare_name_hint() -> Option<String> {
         None
@@ -5487,6 +5509,9 @@ fn normalize_command_value(mut v: Value) -> Value {
 impl FromBareName for NodeKind {
     fn from_bare_name(name: &str) -> Option<Self> {
         NodeKind::from_tag(name)
+    }
+    fn accepts_bare_name() -> bool {
+        true
     }
     fn bare_name_hint() -> Option<String> {
         Some(format!(
@@ -5551,16 +5576,42 @@ impl<'de, T: serde::de::DeserializeOwned + FromBareName> serde::Deserialize<'de>
     }
 }
 
-// Schema is exactly `T`'s — clients that respect schemas send a structured object.
-impl<T: schemars::JsonSchema> schemars::JsonSchema for Flexible<T> {
+// Schema mirrors `T`'s, plus a `string` branch when `T` accepts a bare-name
+// shorthand (`NodeKind`) — so the published schema matches the param docs that
+// promise `add_node {kind:"oscillator"}`, and a client that validates arguments
+// against the schema before sending won't strip the bare-string form. Types
+// without a bare form (`EditorCommand`, `EditorQuery`) keep `T`'s exact schema.
+impl<T: schemars::JsonSchema + FromBareName> schemars::JsonSchema for Flexible<T> {
     fn schema_name() -> std::borrow::Cow<'static, str> {
-        T::schema_name()
+        if T::accepts_bare_name() {
+            format!("Flexible_{}", T::schema_name()).into()
+        } else {
+            T::schema_name()
+        }
     }
     fn schema_id() -> std::borrow::Cow<'static, str> {
-        T::schema_id()
+        if T::accepts_bare_name() {
+            format!("Flexible<{}>", T::schema_id()).into()
+        } else {
+            T::schema_id()
+        }
     }
     fn json_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
-        T::json_schema(generator)
+        if !T::accepts_bare_name() {
+            return T::json_schema(generator);
+        }
+        // `$ref` the inner object schema (registers `T` in `$defs`) and offer it
+        // alongside the bare-name string form.
+        let object_form = generator.subschema_for::<T>().to_value();
+        let hint = T::bare_name_hint().unwrap_or_else(|| {
+            "a bare kind-name string with default props, or the full object form".to_string()
+        });
+        schemars::json_schema!({
+            "anyOf": [
+                { "type": "string", "description": hint },
+                object_form
+            ]
+        })
     }
 }
 
@@ -5686,6 +5737,194 @@ mod tests {
         ]))
         .expect("documented automation event shapes decode");
         assert_eq!(events.len(), 5);
+    }
+
+    /// The schema rmcp publishes for a tool's params (exactly how the wire
+    /// `inputSchema` is generated — `schema_for_type::<Parameters<P>>`).
+    fn tool_input_schema<T: schemars::JsonSchema>() -> serde_json::Value {
+        let generator = schemars::generate::SchemaSettings::draft2020_12().into_generator();
+        serde_json::to_value(generator.into_root_schema_for::<T>()).unwrap()
+    }
+
+    /// Regression for the field-report claim that dedicated arg-taking tools
+    /// receive an empty arguments object ("missing field `node`"). The server's
+    /// deserialization — the only server-side step that can raise that error — must
+    /// accept the documented argument shapes for a *valid* id. (The empty-args the
+    /// reporter saw originated client-side: the schemas + extraction here are sound.)
+    #[test]
+    fn dedicated_tool_params_decode_documented_arguments() {
+        let id = "a5bb0158-4953-43c2-af90-59a2183d09c1";
+
+        let arg: NodeArg = serde_json::from_value(serde_json::json!({ "node": id }))
+            .expect("remove_node decodes {node: <uuid>}");
+        assert_eq!(arg.node.to_string(), id);
+
+        let sf: SetFieldParams =
+            serde_json::from_value(serde_json::json!({ "node": id, "key": "frequency", "value": 220 }))
+                .expect("set_field decodes {node, key, value}");
+        assert_eq!(sf.node.to_string(), id);
+        assert_eq!(sf.key, "frequency");
+
+        // add_node, both documented `kind` forms (bare tag + full object).
+        let bare: AddNodeParams =
+            serde_json::from_value(serde_json::json!({ "kind": "oscillator", "x": 0, "y": 0 }))
+                .expect("add_node decodes a bare kind tag");
+        assert!(matches!(bare.kind.0, NodeKind::Oscillator(_)));
+        let full: AddNodeParams = serde_json::from_value(serde_json::json!({
+            "kind": { "kind": "gain", "props": { "gain": { "value": 0.5 } } }, "x": 0, "y": 0
+        }))
+        .expect("add_node decodes a full NodeKind object");
+        assert!(matches!(full.kind.0, NodeKind::Gain(_)));
+    }
+
+    /// Bug #2: the published `add_node` schema must advertise the bare-string
+    /// `kind` shorthand its description promises — otherwise a schema-validating
+    /// client strips it. The `kind` param must accept BOTH a string and the full
+    /// `NodeKind` object.
+    #[test]
+    fn add_node_kind_schema_advertises_bare_string_form() {
+        let schema = tool_input_schema::<AddNodeParams>();
+        let defs = schema.get("$defs").and_then(Value::as_object).unwrap();
+        // The `kind` property points at the Flexible wrapper def...
+        let kind_ref = schema["properties"]["kind"]["$ref"].as_str().unwrap();
+        let def_name = kind_ref.rsplit('/').next().unwrap();
+        let branches = defs[def_name]["anyOf"].as_array().unwrap();
+        let has_string = branches
+            .iter()
+            .any(|b| b.get("type").and_then(Value::as_str) == Some("string"));
+        let has_object = branches.iter().any(|b| b.get("$ref").is_some());
+        assert!(has_string, "schema must offer the bare-string kind form: {schema}");
+        assert!(has_object, "schema must still offer the full NodeKind object form");
+    }
+
+    /// The `set_field` `value` schema must match what the handler accepts — a
+    /// number / string / bool — not the typeless `{}` that `serde_json::Value`
+    /// produces by default (which lets a client send an object the handler then
+    /// rejects at runtime). Same bug class as the `add_node` kind mismatch.
+    #[test]
+    fn set_field_value_schema_matches_accepted_scalars() {
+        let schema = tool_input_schema::<SetFieldParams>();
+        let value = &schema["properties"]["value"];
+        let types: std::collections::HashSet<&str> = value["anyOf"]
+            .as_array()
+            .expect("value advertises an anyOf of scalar types")
+            .iter()
+            .filter_map(|b| b.get("type").and_then(Value::as_str))
+            .collect();
+        assert_eq!(
+            types,
+            ["number", "string", "boolean"].into_iter().collect(),
+            "value must advertise exactly number/string/boolean: {schema}"
+        );
+        // The doc-comment description must survive the custom schema.
+        assert!(
+            value.get("description").and_then(Value::as_str).is_some_and(|d| d.contains("number")),
+            "value keeps its description: {value}"
+        );
+    }
+
+    /// End-to-end regression for the field report's Bug #1 ("dedicated tools get
+    /// empty args"). Drives each dedicated tool through the SAME argument
+    /// extraction rmcp's `Parameters` extractor performs, into the REAL handler,
+    /// over the REAL link to a mock editor tab — and asserts the editor receives
+    /// the command with its fields POPULATED. This is the level the report asked
+    /// for ("a valid id must reach the handler"). The full `ToolRouter::call`
+    /// isn't constructible in a unit test (`rmcp::Peer` is `pub(crate)`), so we
+    /// reproduce its extraction line verbatim:
+    /// `serde_json::from_value(Value::Object(arguments))`
+    /// (rmcp `handler/server/tool.rs`, `FromContextPart for Parameters`).
+    #[tokio::test]
+    async fn dedicated_tools_reach_handler_over_the_link() {
+        use awsm_audio_editor_protocol::WsServerMsg;
+        use tokio::sync::mpsc;
+
+        fn extract<P: serde::de::DeserializeOwned>(args: Value) -> Parameters<P> {
+            let obj = match args {
+                Value::Object(m) => m,
+                _ => serde_json::Map::new(),
+            };
+            Parameters(
+                serde_json::from_value(Value::Object(obj))
+                    .unwrap_or_else(|e| panic!("failed to deserialize parameters: {e}")),
+            )
+        }
+
+        let link = EditorLink::shared("http://test.local".into());
+        let mcp = EditorMcp::new(link.clone()); // registers this session's agent
+
+        // One unbound editor tab → the agent auto-binds (1 tab : 1 agent).
+        let (tx, mut rx) = mpsc::unbounded_channel::<WsServerMsg>();
+        let conn = link.register_connection(tx);
+        // Mock editor: echo each dispatched command back to the test, then reply.
+        let (seen_tx, mut seen_rx) = mpsc::unbounded_channel::<EditorCommand>();
+        let minted = "a5bb0158-4953-43c2-af90-59a2183d09c1";
+        tokio::spawn(async move {
+            while let Some(WsServerMsg::Request { id, req }) = rx.recv().await {
+                if let Request::Dispatch(cmd) = req {
+                    let resp = match &cmd {
+                        EditorCommand::AddNode { .. } => Response::Created { id: minted.into() },
+                        _ => Response::Ok,
+                    };
+                    let _ = seen_tx.send(cmd);
+                    conn.complete(id, resp);
+                }
+            }
+        });
+
+        // add_node — bare-string `kind` (the Bug #2 form) must reach the handler.
+        let out = mcp
+            .add_node(extract(serde_json::json!({"kind":"oscillator","x":1.0,"y":2.0})))
+            .await
+            .expect("add_node call succeeds");
+        match seen_rx.recv().await.unwrap() {
+            EditorCommand::AddNode { kind, x, y } => {
+                assert!(matches!(kind, NodeKind::Oscillator(_)), "kind arrived populated");
+                assert_eq!((x, y), (1.0, 2.0), "x/y arrived populated");
+            }
+            other => panic!("editor received {other:?}, not AddNode"),
+        }
+        assert!(format!("{out:?}").contains(minted), "minted id echoed to caller");
+
+        // set_field — {node, key, value:220}; the report's decisive multi-arg case.
+        mcp.set_field(extract(
+            serde_json::json!({"node":minted,"key":"frequency","value":220}),
+        ))
+        .await
+        .expect("set_field call succeeds");
+        match seen_rx.recv().await.unwrap() {
+            EditorCommand::SetField { id, key, value } => {
+                assert_eq!(id.to_string(), minted, "node id arrived populated");
+                assert_eq!(key, "frequency");
+                assert!(matches!(value, FieldValue::Num(n) if (n - 220.0).abs() < 1e-9));
+            }
+            other => panic!("editor received {other:?}, not SetField"),
+        }
+
+        // remove_node — {node:<valid uuid>}; the single-arg case the report
+        // singled out (it returned "missing field `node`" in the wild).
+        mcp.remove_node(extract(serde_json::json!({"node":minted})))
+            .await
+            .expect("remove_node call succeeds");
+        match seen_rx.recv().await.unwrap() {
+            EditorCommand::RemoveNode { id } => {
+                assert_eq!(id.to_string(), minted, "node id arrived populated")
+            }
+            other => panic!("editor received {other:?}, not RemoveNode"),
+        }
+    }
+
+    /// Types without a bare-name form (`EditorCommand`) keep their exact object
+    /// schema — the fix must not perturb the working `dispatch_command` tool.
+    #[test]
+    fn command_schema_stays_object_only() {
+        let schema = tool_input_schema::<CommandParams>();
+        let cmd_ref = schema["properties"]["command"]["$ref"].as_str().unwrap();
+        assert_eq!(cmd_ref, "#/$defs/EditorCommand", "no Flexible_ wrapper for commands");
+        let defs = schema.get("$defs").and_then(Value::as_object).unwrap();
+        assert!(
+            !defs.keys().any(|k| k.starts_with("Flexible")),
+            "command schema must not gain an anyOf string branch"
+        );
     }
 
     #[test]
