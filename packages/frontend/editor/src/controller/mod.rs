@@ -1207,9 +1207,13 @@ impl EditorController {
                     .map(|s| s.sample.id);
                 let Some(owner) = owner else {
                     return Err(format!(
-                        "node {target} not found in any sample — it may have been removed, \
-                         or the id is wrong. Use get_snapshot (per active sample) or list_samples \
-                         to find the right node id."
+                        "node {target} not found in any sample's stored graph — it may have \
+                         been removed, or the id is wrong. Note: inlet/outlet (boundary) nodes \
+                         are only addressable while their sample is the ACTIVE canvas (their id \
+                         lives in the snapshot `layout`, not in any stored graph) — \
+                         set_active_sample to that sample (or use dispatch_in_sample) before \
+                         editing/removing them. Otherwise use get_snapshot (active sample) or \
+                         list_samples to find the right node id."
                     ));
                 };
                 let previous = *self.active.borrow();
@@ -3383,6 +3387,7 @@ impl EditorController {
         seen.insert(id);
         self.collect_sample_refs(id, &mut refs, &mut seen);
         let samples = self.samples.borrow();
+        let wasm = self.wasm_assets.borrow();
         let graph_toml = |sid: awsm_audio_schema::SampleId| -> String {
             samples
                 .iter()
@@ -3390,10 +3395,37 @@ impl EditorController {
                 .map(|s| toml::to_string(&s.sample.graph).unwrap_or_default())
                 .unwrap_or_default()
         };
+        // The graph TOML only carries a worklet's module *AssetId*, not its bytes —
+        // so a re-attached / edited `.wasm` (even one that keeps the same params)
+        // would otherwise leave a bounce looking "clean" and re-serve stale DSP
+        // (A1 / A3). Fold each referenced module's source into the hash so a
+        // DSP change reliably flags the bounce dirty.
+        let hash_modules =
+            |sid: awsm_audio_schema::SampleId,
+             h: &mut std::collections::hash_map::DefaultHasher| {
+                let Some(s) = samples.iter().find(|s| s.sample.id == sid) else {
+                    return;
+                };
+                for n in &s.sample.graph.nodes {
+                    if let awsm_audio_schema::NodeKind::AudioWorklet(w) = &n.kind {
+                        if let Some(mid) = w.module {
+                            if let Some(a) = wasm.get(&mid) {
+                                match &a.source {
+                                    awsm_audio_schema::WasmSource::Url(x)
+                                    | awsm_audio_schema::WasmSource::Base64(x)
+                                    | awsm_audio_schema::WasmSource::Path(x) => x.hash(h),
+                                }
+                            }
+                        }
+                    }
+                }
+            };
         let mut h = std::collections::hash_map::DefaultHasher::new();
         graph_toml(id).hash(&mut h);
+        hash_modules(id, &mut h);
         for r in &refs {
             graph_toml(*r).hash(&mut h);
+            hash_modules(*r, &mut h);
         }
         h.finish() & awsm_audio_schema::MAX_TOML_U64
     }
@@ -3888,6 +3920,27 @@ impl EditorController {
     /// when done. No-op for an Arrangement sample.
     pub fn bounce_sample(&self, id: awsm_audio_schema::SampleId, duration_secs: Option<f64>) {
         use awsm_audio_schema::{AudioSource, BufferAsset};
+        // An Arrangement is a timeline of pre-bounced clips, not a bounceable
+        // graph — `bounce_job_for` returns `None` for it, which would otherwise
+        // leave the render-state untouched and make a polling caller (the MCP
+        // `bounce` tool) wait out its full timeout (B7). Fail fast with a clear
+        // reason instead.
+        if self.samples.borrow().iter().any(|s| {
+            s.sample.id == id && s.sample.kind == awsm_audio_schema::SampleKind::Arrangement
+        }) {
+            self.render_state.borrow_mut().insert(
+                id,
+                RenderState::Failed(
+                    "arrangements aren't bounceable — an arrangement is a timeline of \
+                     pre-bounced clips. Bounce the source Sounds instead, or read the \
+                     arrangement with waveform / wav_stats / arrangement_section_stats."
+                        .to_string(),
+                ),
+            );
+            self.status.set(Some("Can't bounce an arrangement.".into()));
+            self.samples_rev.replace_with(|r| r.wrapping_add(1));
+            return;
+        }
         let Some((job, name)) = self.bounce_job_for(id, duration_secs) else {
             return;
         };
@@ -5376,9 +5429,24 @@ impl EditorController {
     ) {
         if let Some(n) = self.node_by_id(node) {
             if let awsm_audio_schema::NodeKind::AudioWorklet(w) = &mut *n.kind.borrow_mut() {
+                // Preserve user-set values across a re-attach: carry the prior
+                // param's value + automation onto the newly-discovered param of
+                // the same name (adopting the new module's range). A brand-new
+                // param keeps its ParamDesc default. Without this, re-attaching an
+                // edited module silently reset every knob (B6).
+                let old = std::mem::take(&mut w.parameters);
+                let merged = params
+                    .into_iter()
+                    .map(|mut np| {
+                        if let Some(op) = old.iter().find(|op| op.name == np.name) {
+                            np.param = op.param.clone();
+                        }
+                        np
+                    })
+                    .collect();
                 w.module = Some(asset);
                 w.processor_name = label;
-                w.parameters = params;
+                w.parameters = merged;
             }
         }
         self.touch_node(node);
