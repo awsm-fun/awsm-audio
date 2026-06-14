@@ -1100,15 +1100,22 @@ impl EditorMcp {
         self.wav(req).await
     }
 
-    #[tool(description = "Numeric stats of a Sound: duration_secs, peak, rms, \
-        channels, sample_rate, spectral_centroid_hz, spectral_flatness (0=tonal, \
-        1=noise-like), zero_crossing_rate. By default measures the LIVE graph (what \
-        it sounds like right now). Set bounced=true to measure the stored BOUNCED \
-        asset (what plays in arrangements) — returns 'not yet bounced' if it hasn't \
-        been bounced. Omit `sample` for the root. These are LEVEL/spectrum \
-        descriptors, not quality: they can't hear whether a sound is synthetic, \
-        grooveless, or the intended object — don't treat clean stats as success for \
-        a creative brief; preview a few seconds and get the user's reaction.")]
+    #[tool(
+        description = "Numeric stats of a Sound: duration_secs, peak, true_peak, \
+        rms, crest_factor (transient spikiness), dc_offset, leading/trailing \
+        silence, attack_secs + decay_secs (envelope shape), channels, sample_rate, \
+        spectral_centroid_hz, brightness (energy >4kHz), spectral_flatness \
+        (0=tonal, 1=noise-like), zero_crossing_rate. A descriptive timbre/level \
+        profile — interpret it yourself; the server makes no quality judgment. By \
+        default measures the LIVE graph (what it sounds like right now). Set \
+        bounced=true to measure the stored BOUNCED asset (what plays in \
+        arrangements) — returns 'not yet bounced' if it hasn't been bounced. Omit \
+        `sample` for the root. These are LEVEL/spectrum descriptors, not quality: \
+        they can't hear whether a sound is synthetic, grooveless, or the intended \
+        object — don't treat clean stats as success for a creative brief; render \
+        with render_wav and share the preview URL so the user can listen, then act \
+        on their reaction."
+    )]
     async fn wav_stats(
         &self,
         Parameters(p): Parameters<WavStatsParams>,
@@ -1249,6 +1256,35 @@ impl EditorMcp {
             .await
     }
 
+    #[tool(description = "Remove EVERY node (and its wires) from the ACTIVE \
+        sample's canvas in one call — a cleanup helper for starting a graph over \
+        or tidying after experiments. Operates on the active sample only \
+        (set_active_sample first to target another). Returns the count removed. \
+        Destructive: export_sample first if you might want the patch back.")]
+    async fn clear_graph(&self) -> Result<CallToolResult, McpError> {
+        let ids: Vec<_> = match self.query_result(EditorQuery::Snapshot).await? {
+            QueryResult::Snapshot(s) => s.layout.iter().map(|n| n.id).collect(),
+            other => return Err(unexpected_query(other)),
+        };
+        let removed = ids.len();
+        if removed == 0 {
+            return Ok(text(
+                serde_json::json!({ "ok": true, "removed": 0 }).to_string(),
+            ));
+        }
+        let cmds: Vec<EditorCommand> = ids
+            .into_iter()
+            .map(|id| EditorCommand::RemoveNode { id })
+            .collect();
+        match self.req(Request::DispatchBatch(cmds)).await? {
+            Response::Batch(_) | Response::Ok => Ok(text(
+                serde_json::json!({ "ok": true, "removed": removed }).to_string(),
+            )),
+            Response::Err(e) => Err(McpError::internal_error(e, None)),
+            other => Err(unexpected(other)),
+        }
+    }
+
     #[tool(description = "Wire an output port to an input port.")]
     async fn connect(
         &self,
@@ -1273,9 +1309,12 @@ impl EditorMcp {
         the timeline drives the rendered value and this base only applies before \
         the first event (read it back with get_node_fields `automation`). Note for \
         a sequencer-triggered voice the played note overrides an oscillator's \
-        `frequency` (see docs/instruments). Acts by node id regardless of which \
-        sample is the active canvas, and errors (never a silent ok) if the node id \
-        exists in no sample."
+        `frequency` (see docs/instruments). Note: a Gain's base `gain` field can \
+        clamp at unity (1.0) in some contexts — to exceed unity reliably (or to \
+        add motion), drive the param via modulation (a `constant_source` wired \
+        into it, which SUMS on top of the base) or raise an envelope's peak with \
+        set_automation. Acts by node id regardless of which sample is the active \
+        canvas, and errors (never a silent ok) if the node id exists in no sample."
     )]
     async fn set_field(
         &self,
@@ -1334,7 +1373,15 @@ impl EditorMcp {
         description = "Add an inlet/outlet boundary node at world (x, y) — the \
         typed form of dispatch_command add_boundary. An instrument Sound needs an \
         `outlet` so referencing graphs (and the renderer) can read its signal. \
-        Returns the minted node id."
+        Inlets are for AUDIO-RATE signal routing driven by a PARENT Sample-ref — \
+        at the top/standalone level an inlet has no host, so it emits nothing \
+        (an audio-input inlet) or just its default (a param inlet). To expose a \
+        controllable, per-instance KNOB, use a `constant_source` node instead \
+        (set its `offset`, wire it into a node input or a param `modulate`) — \
+        that's the reliable macro mechanism; inlets are not. The boundary node's \
+        id is canvas-scoped (lives in the snapshot `layout`, not in any stored \
+        graph): edit/remove it while its sample is the active canvas. Returns the \
+        minted node id."
     )]
     async fn add_boundary(
         &self,
@@ -2589,6 +2636,26 @@ impl EditorMcp {
                 .ok_or_else(|| McpError::internal_error("no active sample reported", None))?,
             other => return Err(unexpected_query(other)),
         };
+        // parameter_sweep renders the ACTIVE sample, but set_field can target a
+        // node on any sample — sweeping a node that doesn't live on the active
+        // canvas would silently measure the wrong sound. Guard against it loudly
+        // (C11): the node must be on the active canvas (check the snapshot layout).
+        let on_active = match self.query_result(EditorQuery::Snapshot).await? {
+            QueryResult::Snapshot(s) => s.layout.iter().any(|n| n.id == p.node),
+            other => return Err(unexpected_query(other)),
+        };
+        if !on_active {
+            return Err(McpError::invalid_params(
+                format!(
+                    "node {} is not on the active canvas, but parameter_sweep renders the \
+                     ACTIVE sample — the sweep would measure the wrong sound. \
+                     set_active_sample to the node's sample first (find it with list_samples \
+                     / get_snapshot), then sweep.",
+                    p.node
+                ),
+                None,
+            ));
+        }
         // Remember the original value so the sweep is non-destructive.
         let original = match self
             .query_result(EditorQuery::NodeFields { node: p.node })
@@ -3949,12 +4016,17 @@ impl EditorMcp {
         match self.req(r).await? {
             Response::Render(h) => {
                 let path = crate::http::render_path(&h.render_id);
+                // A full, clickable URL so a human-in-the-loop can listen without a
+                // separate export step (C10) — agents can't hear, so the user is the
+                // ears. The bytes are already served at this origin.
+                let preview_url =
+                    format!("{}/renders/{}.wav", self.link.self_origin(), h.render_id);
                 Ok(text(format!(
-                    "wrote {} bytes to {} (also at /renders/{}.wav) — \
+                    "wrote {} bytes to {} — preview (listen): {} — \
                      duration {:.3}s, peak {:.3}, rms {:.3}",
                     h.byte_len,
                     path.display(),
-                    h.render_id,
+                    preview_url,
                     h.duration_secs,
                     h.peak,
                     h.rms,
@@ -4571,16 +4643,37 @@ A compile error here is yours to fix — it shows up in your own build output.
 
 A module that compiles but violates the ABI returns the error from `attach_wasm`.
 
-## Pitch tracking
+**Re-attaching / cloning preserves your param values.** Re-attaching an edited
+module carries each prior param's value + automation onto the new param of the
+same `name` (adopting the new module's min/max); a *brand-new* param name takes
+its `ParamDesc` default. Cloning a Sound keeps the worklet's param values too. So
+you don't have to re-set every knob after a tweak-compile-reattach cycle — but a
+param you *renamed* in the source will reset (it reads as new).
 
-A worklet voice does **not** receive the played note's pitch. When a sequencer
-triggers an instrument it transposes only oscillator `frequency` (by
+**Re-attach reliably reloads the DSP.** Each `attach_wasm` recompiles the module
+and a bounce's dirty-check folds in the module bytes, so an edited `.wasm`
+re-bounces fresh — you do **not** need to nudge a param to force a new render.
+
+## Pitch & gate (worklets as instrument voices)
+
+A worklet voice does **not** receive the played note's pitch as a value. When a
+sequencer triggers an instrument it transposes only oscillator `frequency` (by
 `note − 60` semitones); a worklet's params are left at their authored values for
 every note (see `awsm-audio://docs/instruments`). So a worklet is fixed-pitch under
 the sequencer — great for textures, drums, effects, and per-sample DSP, but it
 can't follow a melody from the note number alone. If you need a pitched worklet
 voice, expose a `frequency` (or similar) param and drive it yourself with
 `set_automation`, or place it on a single pitch.
+
+**Onset / gate: you get it for free as a voice — don't onset-detect the input.**
+A worklet used as an instrument *voice* (inside a sequencer-triggered graph) is
+**constructed fresh per note** — `new()` runs at note-on and the first `process()`
+quantum is the strike. So for a modal / Karplus / impact synth, fire the excitation
+in `new()` (or on the first quantum) rather than detecting onset on the input
+signal; the note's length gates teardown. (This only holds for a voice. A worklet
+placed as an *insert effect* on a continuous signal is built once and is **not**
+reconstructed per note — there it genuinely has no note/gate, and you'd drive a
+`gate` param yourself, e.g. a `constant_source` or `set_automation` ramp into it.)
 
 ## 4. Driving a worklet source for a real duration
 
@@ -4704,7 +4797,10 @@ transposed:
   most SFX. But it means you **cannot** build a melodic sampler or a melodic worklet
   voice that follows the sequencer purely from the note number — use an oscillator
   source for melodic content, or drive pitch yourself (per-clip `transpose`, or
-  authoring distinct Sounds/automation per pitch).
+  authoring distinct Sounds/automation per pitch). A worklet voice **is**
+  constructed fresh per note, though, so its `new()` / first quantum is the strike
+  onset — fire an impact/excitation there rather than onset-detecting the input
+  (see `awsm-audio://docs/worklet-abi`).
 
 ## Envelope timing (AudioParam automation)
 
