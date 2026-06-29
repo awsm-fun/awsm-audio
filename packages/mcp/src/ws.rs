@@ -1,6 +1,6 @@
 //! The `/editor` WebSocket: one socket per editor tab. A single writer task owns
 //! the sink (so concurrent replies/events never interleave a half-written
-//! frame); the reader loop demuxes responses, events, and pairing claims.
+//! frame); the reader loop demuxes responses and push events.
 
 use axum::extract::ws::{Message, Utf8Bytes, WebSocket};
 use futures::{SinkExt, StreamExt};
@@ -44,14 +44,6 @@ pub async fn handle_socket(socket: WebSocket, link: EditorLink) {
             Message::Text(txt) => match serde_json::from_str::<WsClientMsg>(txt.as_str()) {
                 Ok(WsClientMsg::Response { id, resp }) => conn.complete(id, resp),
                 Ok(WsClientMsg::Event(ev)) => link.publish_event(conn.id, ev),
-                Ok(WsClientMsg::Pair { code }) => {
-                    if link.bind_by_code(&conn, &code) {
-                        tracing::info!("connection {} paired with code {code}", conn.id);
-                    } else {
-                        tracing::warn!("connection {}: no agent for pair code {code}", conn.id);
-                        conn.send(WsServerMsg::PairingRequired);
-                    }
-                }
                 Err(e) => tracing::warn!("connection {}: bad ws frame: {e}", conn.id),
             },
             Message::Close(_) => break,

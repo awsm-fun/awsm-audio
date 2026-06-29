@@ -3,11 +3,14 @@
 //! [`EditorController`](crate::controller) directly.
 //!
 //! Started two ways: automatically when the page is loaded with
-//! `?mcp=<host:port>` (e.g. `?mcp=127.0.0.1:9171`, optionally `&pair=<code>` and
-//! `&tls=true` for a TLS server), or on demand via the top-bar MCP button → modal
-//! (pre-filled with [`default_origin`], or the `?mcp=` origin, plus an optional
-//! pairing code). Connect / disconnect surface as status toasts and a reactive
-//! [`status`] signal the UI reflects.
+//! `?mcp=<host:port>` (e.g. `?mcp=127.0.0.1:9171`, optionally `&tls=true` for a
+//! TLS server), or on demand via the top-bar MCP button → modal (pre-filled with
+//! [`default_origin`], or the `?mcp=` origin). Connect / disconnect surface as
+//! status toasts and a reactive [`status`] signal the UI reflects.
+//!
+//! This server is single-session: one server serves one editor tab. If a newer
+//! tab attaches to the same server, this one is [`detached`](WsServerMsg::Detached)
+//! and stops reconnecting.
 //!
 //! The link is one ordered WebSocket. The server sends [`WsServerMsg::Request`]
 //! frames; we serve each and reply with a [`WsClientMsg::Response`] carrying the
@@ -81,16 +84,11 @@ thread_local! {
     /// unexpected drop leaves this `false`, so the loop redials.
     static STOP_RETRY: Cell<bool> = const { Cell::new(false) };
     static ORIGIN: Mutable<String> = Mutable::new(normalize_origin(default_origin()));
-    /// Pairing code to claim a specific agent (from `?pair=` or the modal). Empty
-    /// unless the server needs disambiguation between multiple tabs/agents.
-    static PAIR: Mutable<String> = Mutable::new(String::new());
     /// Use TLS for the link (`wss`/`https`) instead of plain (`ws`/`http`). Off by
     /// default — the server is normally local. Set via `?tls=true` or the modal.
     static TLS: Mutable<bool> = Mutable::new(false);
-    /// Set when the server replies `PairingRequired`, so the modal can prompt.
-    static PAIRING_NEEDED: Mutable<bool> = Mutable::new(false);
     /// Outbound frame sender for the live link; `None` when disconnected. Kept so
-    /// the UI can `disconnect()` and `submit_pair_code()` over the open socket.
+    /// the UI can `disconnect()` over the open socket.
     static SESSION: RefCell<Option<LinkTx>> = const { RefCell::new(None) };
     /// True while the MCP agent is actively serving requests (drives the UI pulse).
     static WORKING: Mutable<bool> = Mutable::new(false);
@@ -160,46 +158,10 @@ pub fn origin() -> Mutable<String> {
     ORIGIN.with(|s| s.clone())
 }
 
-/// The pairing code the modal binds to (from `?pair=` or typed in). Empty means
-/// "rely on auto-pairing".
-pub fn pair() -> Mutable<String> {
-    PAIR.with(|s| s.clone())
-}
-
 /// Whether the link uses TLS (`wss`/`https`). Off by default; set via `?tls=true`
 /// or the modal toggle for a TLS-terminated remote server.
 pub fn tls() -> Mutable<bool> {
     TLS.with(|s| s.clone())
-}
-
-/// True when the server asked for a pairing code (the modal reveals its field).
-pub fn pairing_needed() -> Mutable<bool> {
-    PAIRING_NEEDED.with(|s| s.clone())
-}
-
-/// Send a pairing code over the live link (or stash it for the next connect).
-/// Lets the user pair an already-open socket after a `PairingRequired`.
-pub fn submit_pair_code(code: String) {
-    let code = code.trim().to_string();
-    PAIR.with(|p| p.set(code.clone()));
-    if code.is_empty() {
-        return;
-    }
-    let sent = SESSION.with(|s| {
-        s.borrow()
-            .as_ref()
-            .map(|tx| {
-                tx.unbounded_send(WsClientMsg::Pair { code: code.clone() })
-                    .is_ok()
-            })
-            .unwrap_or(false)
-    });
-    if sent {
-        PAIRING_NEEDED.with(|n| n.set_neq(false));
-    } else {
-        // Not connected yet — connect; `run` sends the stashed code on attach.
-        connect(origin().get_cloned());
-    }
 }
 
 /// Surface a short message on the editor's status line.
@@ -233,7 +195,6 @@ pub fn connect(control_origin: String) {
         loop {
             let result = run(control_origin.clone()).await;
             SESSION.with(|s| *s.borrow_mut() = None);
-            PAIRING_NEEDED.with(|n| n.set_neq(false));
             activity_reset(); // never leave a stale "working" pulse after a drop
             if status.get() == RemoteStatus::Connected {
                 ever_connected = true;
@@ -356,30 +317,19 @@ async fn run(control_origin: String) -> Result<(), String> {
     let (out_tx, mut out_rx) = mpsc::unbounded::<WsClientMsg>();
     SESSION.with(|s| *s.borrow_mut() = Some(out_tx));
     status().set(RemoteStatus::Connected);
-    PAIRING_NEEDED.with(|n| n.set_neq(false));
     toast("MCP connected");
     tracing::info!("mcp: attached");
-
-    // If a pairing code is set, claim our agent up front.
-    let pair_code = PAIR.with(|p| p.get_cloned());
-    if !pair_code.is_empty() {
-        send_frame(WsClientMsg::Pair { code: pair_code });
-    }
 
     loop {
         futures::select! {
             inbound = stream.next().fuse() => match inbound {
                 Some(Ok(Message::Text(txt))) => match serde_json::from_str::<WsServerMsg>(&txt) {
                     Ok(WsServerMsg::Request { id, req }) => spawn_local(serve_one(id, req)),
-                    Ok(WsServerMsg::PairingRequired) => {
-                        PAIRING_NEEDED.with(|n| n.set_neq(true));
-                        toast("MCP: enter the pairing code shown by your agent");
-                    }
                     Ok(WsServerMsg::Detached) => {
-                        // Another tab took over this binding — don't fight for it
-                        // by reconnecting.
+                        // A newer tab attached to this single-session server and
+                        // took over — don't fight for it by reconnecting.
                         STOP_RETRY.with(|f| f.set(true));
-                        toast("MCP: detached (another tab paired)");
+                        toast("MCP: detached (a newer editor tab took over this server)");
                         return Ok(());
                     }
                     Err(e) => tracing::warn!("mcp: bad frame: {e}"),

@@ -96,20 +96,14 @@ pub enum WsServerMsg {
     /// Serve this request and reply with [`WsClientMsg::Response`] carrying the
     /// same `id`.
     Request { id: u64, req: Request },
-    /// The agent that wants this editor is ambiguous and supplied no pairing
-    /// code — the editor should prompt for one and send [`WsClientMsg::Pair`].
-    PairingRequired,
-    /// This socket's binding was taken over (another tab/agent paired) — the
-    /// editor should show itself disconnected.
+    /// This tab was superseded by a newer one attaching to the same single-session
+    /// server — the editor should show itself disconnected and stop reconnecting.
     Detached,
 }
 
 /// Browser → server WebSocket frame.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WsClientMsg {
-    /// Claim a binding to the agent holding this pairing code. Optional first
-    /// frame; unnecessary in the unambiguous 1:1 auto-bind case.
-    Pair { code: String },
     /// Reply to a [`WsServerMsg::Request`] with the matching `id`.
     Response { id: u64, resp: Response },
     /// An unsolicited editor push event.

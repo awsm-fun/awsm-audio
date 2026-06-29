@@ -47,14 +47,10 @@ fn main() {
     dominator::append_dom(&dominator::body(), ui::render());
 
     // Auto-attach to an MCP server when the page is loaded with
-    // `?mcp=<host:port>` (e.g. `?mcp=127.0.0.1:9171`), optionally `&pair=<code>`
-    // to claim a specific agent and `&tls=true` for a TLS-terminated server
-    // (`wss`/`https`). Without `mcp` the link stays idle until the user connects
-    // via the top-bar button.
+    // `?mcp=<host:port>` (e.g. `?mcp=127.0.0.1:9171`), optionally `&tls=true` for
+    // a TLS-terminated server (`wss`/`https`). Without `mcp` the link stays idle
+    // until the user connects via the top-bar button. One server, one editor tab.
     remote::start_event_forwarding();
-    if let Some(code) = query_param("pair") {
-        remote::pair().set(code);
-    }
     if query_param("tls").is_some_and(|v| v == "true") {
         remote::tls().set(true);
     }
