@@ -56,6 +56,7 @@ pub mod ids;
 pub mod library;
 pub mod nodes;
 pub mod param;
+pub mod project;
 pub mod sample;
 pub mod song;
 
@@ -70,6 +71,7 @@ pub use ids::*;
 pub use library::*;
 pub use nodes::*;
 pub use param::*;
+pub use project::*;
 pub use sample::*;
 pub use song::*;
 

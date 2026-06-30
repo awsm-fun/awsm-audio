@@ -63,6 +63,88 @@ pub struct Player {
     mic: Option<web_sys::MediaStream>,
     /// The spatial listener applied each play (position/orientation).
     listener: Option<Listener>,
+    /// Independent concurrent voices started by [`play_voice`](Self::play_voice),
+    /// each its own graph fanning into the shared master. Oldest-first, so a voice
+    /// cap can steal the oldest.
+    voices: Vec<GraphVoice>,
+    /// Monotonic id source for [`VoiceHandle`]s.
+    next_voice: u64,
+    /// Optional polyphony cap: when set, starting a voice past the cap tears down
+    /// the oldest one (voice stealing). `None` = unbounded.
+    max_voices: Option<usize>,
+}
+
+/// An opaque handle to one concurrent voice started by
+/// [`Player::play_voice`]. Pass it to [`Player::stop_voice`] /
+/// [`Player::set_voice_param_live`] to address that voice specifically. Cheap to
+/// copy; addressing a voice that has already been stopped is a harmless no-op.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct VoiceHandle(u64);
+
+/// One independent concurrent voice: a fully-built graph routed into the shared
+/// master bus, kept alive until [`Player::stop_voice`] (or a global
+/// [`Player::stop`] / voice-steal) tears it down.
+struct GraphVoice {
+    id: u64,
+    inner: Vec<AudioNode>,
+    sources: Vec<AudioScheduledSourceNode>,
+    params: Vec<(NodeId, Vec<(&'static str, web_sys::AudioParam)>)>,
+}
+
+impl GraphVoice {
+    /// Stop sources now and disconnect everything from the master bus.
+    fn teardown(self) {
+        for s in &self.sources {
+            let _ = s.stop();
+        }
+        for n in &self.inner {
+            let _ = n.disconnect();
+        }
+    }
+}
+
+/// Nudge a live param toward `value` over `glide` seconds (jump if `glide <= 0`),
+/// measured from `now`. No-op if the `(node, param)` pair isn't present. Shared by
+/// the main-graph and per-voice live setters.
+fn nudge_param(
+    params: &[(NodeId, Vec<(&'static str, web_sys::AudioParam)>)],
+    node: NodeId,
+    param: &str,
+    value: f32,
+    glide: f64,
+    now: f64,
+) {
+    if let Some(p) = params
+        .iter()
+        .find(|(id, _)| *id == node)
+        .and_then(|(_, ps)| ps.iter().find(|(name, _)| *name == param).map(|(_, p)| p))
+    {
+        if glide <= 0.0 {
+            let _ = p.set_value_at_time(value, now);
+        } else {
+            // time-constant ≈ glide/3 → near-complete move within `glide`.
+            let _ = p.set_target_at_time(value, now, glide / 3.0);
+        }
+    }
+}
+
+/// Apply per-trigger param overrides as each node's **base value**, before its
+/// sources are started — so the very first render quantum already reflects them
+/// (no one-block window at the authored defaults). Used by the `*_with` play
+/// paths. A `(node, param)` not in `params` is silently skipped.
+fn apply_overrides(
+    params: &[(NodeId, Vec<(&'static str, web_sys::AudioParam)>)],
+    overrides: &[(NodeId, &str, f32)],
+) {
+    for (node, name, value) in overrides {
+        if let Some(p) = params
+            .iter()
+            .find(|(id, _)| id == node)
+            .and_then(|(_, ps)| ps.iter().find(|(n, _)| n == name).map(|(_, p)| p))
+        {
+            p.set_value(*value);
+        }
+    }
 }
 
 /// Upper bound on simultaneously-scheduled song notes — a backstop against
@@ -310,6 +392,21 @@ impl Player {
     /// satisfies the browser's gesture requirement).
     pub fn new() -> Result<Self> {
         let ctx = AudioContext::new().map_err(|e| anyhow::anyhow!("AudioContext: {e:?}"))?;
+        Self::with_context(ctx)
+    }
+
+    /// Create a player on a **host-supplied** `AudioContext` instead of
+    /// constructing its own. Use this to (a) build the context yourself inside a
+    /// real user-gesture handler (then `resume()` the one you own before the first
+    /// `play`), or (b) share one context across several systems — every
+    /// [`Player`] on the same context shares its clock, its
+    /// [`AudioListener`](Self::set_listener_live), and the autoplay-gesture state.
+    ///
+    /// The player still owns its own `master → analyser → destination` chain on
+    /// that context (so multiple players can coexist on one context, each a
+    /// separate sub-mix), but it does **not** close the context on drop — the host
+    /// owns its lifetime.
+    pub fn with_context(ctx: AudioContext) -> Result<Self> {
         let master = ctx
             .create_gain()
             .map_err(|e| anyhow::anyhow!("master gain: {e:?}"))?;
@@ -337,7 +434,17 @@ impl Player {
             worklet_ready: false,
             mic: None,
             listener: None,
+            voices: Vec::new(),
+            next_voice: 0,
+            max_voices: None,
         })
+    }
+
+    /// The underlying `AudioContext` — for sharing it with another [`Player`]
+    /// (via [`with_context`](Self::with_context)) or another audio system, or to
+    /// `resume()` it from a gesture handler before the first play.
+    pub fn context(&self) -> &AudioContext {
+        &self.ctx
     }
 
     /// Begin loading the generic WASM worklet shim into this context (idempotent
@@ -415,8 +522,10 @@ impl Player {
             .create_buffer(ch, len, sample_rate)
             .map_err(|e| anyhow::anyhow!("create_buffer: {e:?}"))?;
         for (i, data) in channels.iter().enumerate() {
-            buffer
-                .copy_to_channel(data, i as i32)
+            // Via an owned Float32Array — a shared-memory (wasm-threads) build
+            // otherwise hands `copyToChannel` a `SharedArrayBuffer`-backed view,
+            // which WebAudio rejects. See [`build::copy_to_channel`].
+            build::copy_to_channel(&buffer, data, i as i32)
                 .map_err(|e| anyhow::anyhow!("copy_to_channel: {e:?}"))?;
         }
         self.buffers.insert(id, buffer);
@@ -444,9 +553,27 @@ impl Player {
         self.mic = Some(stream);
     }
 
-    /// Set the spatial listener applied on each play/render.
+    /// Set the spatial listener applied on each play/render. Takes effect at the
+    /// next `play`/render; for a per-frame update of an already-playing scene use
+    /// [`set_listener_live`](Self::set_listener_live).
     pub fn set_listener(&mut self, listener: Option<Listener>) {
         self.listener = listener;
+    }
+
+    /// Write the context `AudioListener`'s position + orientation **immediately**,
+    /// without re-triggering any sound — the mirror of
+    /// [`set_param_live`](Self::set_param_live) for the ears. Call it each frame to
+    /// keep a camera-relative listener following the camera while sounds keep
+    /// ringing. Also updates the stored listener so subsequent plays start from
+    /// the same pose.
+    ///
+    /// (The write is immediate, not glided: stable web-sys exposes the listener's
+    /// older `setPosition`/`setOrientation` setters rather than its per-axis
+    /// `AudioParam`s, so there's no `setTargetAtTime` glide path yet. Call it at
+    /// frame rate and the motion is already smooth.)
+    pub fn set_listener_live(&mut self, listener: &Listener) {
+        build::apply_listener(&self.ctx, listener, self.ctx.current_time());
+        self.listener = Some(listener.clone());
     }
 
     /// Set the persistent master-bus gain (0..1+), live. Used for MIDI velocity
@@ -458,6 +585,38 @@ impl Player {
     /// Tear down any running instance, build `graph`, route its terminals to the
     /// master bus, start every source, and resume the context.
     pub fn play(&mut self, graph: &Graph, looping: bool) -> Result<()> {
+        self.play_with(graph, looping, &[])
+    }
+
+    /// As [`play`](Self::play), but apply per-trigger param `overrides` —
+    /// `(node, param_name, value)` — as the graph's **base values at build time**,
+    /// before any source starts. This makes a one-shot correct from sample 0
+    /// (level/cutoff/pan set to where the trigger happened) instead of starting at
+    /// the authored defaults and only catching up a render-quantum later via
+    /// [`set_param_live`](Self::set_param_live).
+    ///
+    /// Overrides set the param's intrinsic value, so they're the right tool for
+    /// the per-trigger statics — impact intensity → a gain, hardness → a filter
+    /// cutoff, world position → a panner's `positionX/Y/Z`. A param that also
+    /// carries its own scheduled automation still follows that automation.
+    ///
+    /// ```no_run
+    /// # use awsm_audio_player::Player;
+    /// # use awsm_audio_schema::{Graph, NodeId};
+    /// # fn demo(player: &mut Player, graph: &Graph, level: NodeId, panner: NodeId) -> anyhow::Result<()> {
+    /// player.play_with(graph, false, &[
+    ///     (level, "gain", 0.8),
+    ///     (panner, "positionX", 3.0),
+    ///     (panner, "positionZ", -1.0),
+    /// ])?;
+    /// # Ok(()) }
+    /// ```
+    pub fn play_with(
+        &mut self,
+        graph: &Graph,
+        looping: bool,
+        overrides: &[(NodeId, &str, f32)],
+    ) -> Result<()> {
         self.stop();
         // Note-on time: automation in the graph is scheduled relative to this.
         let t0 = self.ctx.current_time();
@@ -472,6 +631,7 @@ impl Player {
             looping,
             t0,
         )?;
+        apply_overrides(&built.params, overrides);
         self.inner = built.inner;
         self.sources = built.sources;
         self.params = built.params;
@@ -511,8 +671,10 @@ impl Player {
         }
     }
 
-    /// Stop and disconnect the current instance (the master chain stays intact),
-    /// plus every scheduled song voice.
+    /// Stop and disconnect **everything** (the master chain stays intact): the
+    /// current instance, every scheduled song voice, and every concurrent
+    /// [`play_voice`](Self::play_voice) voice. To stop a single concurrent voice,
+    /// use [`stop_voice`](Self::stop_voice) instead.
     pub fn stop(&mut self) {
         for s in self.sources.drain(..) {
             let _ = s.stop();
@@ -525,6 +687,7 @@ impl Player {
         for v in self.song_voices.drain(..) {
             v.teardown();
         }
+        self.stop_all_voices();
     }
 
     /// The audio context's current time (seconds) — the clock the song scheduler
@@ -667,6 +830,18 @@ impl Player {
     /// [`schedule_triggers`](Self::schedule_triggers) can spawn voices into an
     /// instrument-ref's voice-bus gain. Tears down any previous instance first.
     pub fn play_arrangement(&mut self, arrangement: &Graph, looping: bool) -> Result<()> {
+        self.play_arrangement_with(arrangement, looping, &[])
+    }
+
+    /// As [`play_arrangement`](Self::play_arrangement), but apply per-trigger param
+    /// `overrides` as base values before the sources start (see
+    /// [`play_with`](Self::play_with)).
+    pub fn play_arrangement_with(
+        &mut self,
+        arrangement: &Graph,
+        looping: bool,
+        overrides: &[(NodeId, &str, f32)],
+    ) -> Result<()> {
         self.stop();
         let t0 = self.ctx.current_time();
         let built = build::build_graph(
@@ -680,6 +855,7 @@ impl Player {
             looping,
             t0,
         )?;
+        apply_overrides(&built.params, overrides);
         self.bus_nodes = built.nodes;
         self.inner = built.inner;
         self.sources = built.sources;
@@ -777,22 +953,164 @@ impl Player {
     /// # }
     /// ```
     pub fn set_param_live(&self, node: NodeId, param: &str, value: f32, glide: f64) {
-        let now = self.ctx.current_time();
-        let apply = |params: &[(NodeId, Vec<(&'static str, web_sys::AudioParam)>)]| {
-            if let Some(p) = params
-                .iter()
-                .find(|(id, _)| *id == node)
-                .and_then(|(_, ps)| ps.iter().find(|(name, _)| *name == param).map(|(_, p)| p))
-            {
-                if glide <= 0.0 {
-                    let _ = p.set_value_at_time(value, now);
-                } else {
-                    // time-constant ≈ glide/3 → near-complete move within `glide`.
-                    let _ = p.set_target_at_time(value, now, glide / 3.0);
-                }
+        nudge_param(
+            &self.params,
+            node,
+            param,
+            value,
+            glide,
+            self.ctx.current_time(),
+        );
+    }
+
+    // ─── Concurrent voices ───────────────────────────────────────────────────
+    //
+    // A `Player` owns one master chain (`master → analyser → destination`) and
+    // *one* "current" instance driven by `play`/`play_arrangement`. Voices add
+    // **polyphony on that same master**: any number of independent graphs sounding
+    // at once — a sustaining drone *and* transient one-shots — without cutting
+    // each other off and without a second `AudioContext` per sound. This is what
+    // lets a game keep a single context (one listener, one master, one
+    // gesture-resume) instead of hitting the browser's ~6-context ceiling.
+
+    /// Set the polyphony cap for concurrent voices. When more than `n` voices are
+    /// sounding, starting another tears down the **oldest** (voice stealing).
+    /// `None` (the default) is unbounded.
+    pub fn set_max_voices(&mut self, n: Option<usize>) {
+        self.max_voices = n;
+        self.enforce_voice_cap();
+    }
+
+    /// Start `graph` as an **independent concurrent voice** fanning into the shared
+    /// master — *without* stopping the current instance or any other voice — and
+    /// return a [`VoiceHandle`] to stop or steer it. This is the building block for
+    /// game audio: one `Player`, one context, many simultaneous sounds.
+    ///
+    /// The voice runs until you [`stop_voice`](Self::stop_voice) it, until a global
+    /// [`stop`](Self::stop), or until it's stolen by the
+    /// [`max_voices`](Self::set_max_voices) cap. A self-decaying one-shot goes
+    /// silent on its own but keeps its (idle) nodes until one of those — so free it
+    /// when it's done (e.g. drive a timer off [`measure_sound`](Self::measure_sound)).
+    pub fn play_voice(&mut self, graph: &Graph, looping: bool) -> Result<VoiceHandle> {
+        self.play_voice_with(graph, looping, &[])
+    }
+
+    /// As [`play_voice`](Self::play_voice), but apply per-trigger param `overrides`
+    /// as base values before the voice's sources start (see
+    /// [`play_with`](Self::play_with)) — so a spatial one-shot pans to where it
+    /// happened on its very first sample.
+    pub fn play_voice_with(
+        &mut self,
+        graph: &Graph,
+        looping: bool,
+        overrides: &[(NodeId, &str, f32)],
+    ) -> Result<VoiceHandle> {
+        let t0 = self.ctx.current_time();
+        let built = build::build_graph(
+            &self.ctx,
+            graph,
+            &self.master,
+            &self.buffers,
+            &self.modules,
+            self.mic.as_ref(),
+            self.worklet_ready,
+            looping,
+            t0,
+        )?;
+        apply_overrides(&built.params, overrides);
+        if let Some(l) = &self.listener {
+            build::apply_listener(&self.ctx, l, t0);
+        }
+        for s in &built.sources {
+            let _ = s.start();
+        }
+        let id = self.next_voice;
+        self.next_voice = self.next_voice.wrapping_add(1);
+        self.voices.push(GraphVoice {
+            id,
+            inner: built.inner,
+            sources: built.sources,
+            params: built.params,
+        });
+        self.enforce_voice_cap();
+        let _ = self.ctx.resume();
+        Ok(VoiceHandle(id))
+    }
+
+    /// Stop and tear down one concurrent voice. No-op if the handle is unknown
+    /// (already stopped / stolen).
+    pub fn stop_voice(&mut self, handle: VoiceHandle) {
+        if let Some(i) = self.voices.iter().position(|v| v.id == handle.0) {
+            self.voices.remove(i).teardown();
+        }
+    }
+
+    /// Stop and tear down every concurrent voice (leaves the current
+    /// `play`/`play_arrangement` instance untouched).
+    pub fn stop_all_voices(&mut self) {
+        for v in self.voices.drain(..) {
+            v.teardown();
+        }
+    }
+
+    /// Whether a voice handle is still sounding (present in the voice pool).
+    pub fn voice_alive(&self, handle: VoiceHandle) -> bool {
+        self.voices.iter().any(|v| v.id == handle.0)
+    }
+
+    /// Number of concurrent voices currently alive.
+    pub fn active_voices(&self) -> usize {
+        self.voices.len()
+    }
+
+    /// Nudge a live param of one specific concurrent `voice` — the per-voice mirror
+    /// of [`set_param_live`](Self::set_param_live). Needed because the same
+    /// [`NodeId`] can recur across polyphonic voices instantiated from the same
+    /// graph; the handle disambiguates which voice to steer. No-op if the voice or
+    /// `(node, param)` isn't present.
+    pub fn set_voice_param_live(
+        &self,
+        voice: VoiceHandle,
+        node: NodeId,
+        param: &str,
+        value: f32,
+        glide: f64,
+    ) {
+        if let Some(v) = self.voices.iter().find(|v| v.id == voice.0) {
+            nudge_param(
+                &v.params,
+                node,
+                param,
+                value,
+                glide,
+                self.ctx.current_time(),
+            );
+        }
+    }
+
+    /// The controllable `(node, [param names])` of one concurrent voice — the
+    /// per-voice form of [`live_params`](Self::live_params). Empty if the voice
+    /// isn't present.
+    pub fn voice_live_params(&self, voice: VoiceHandle) -> Vec<(NodeId, Vec<&'static str>)> {
+        self.voices
+            .iter()
+            .find(|v| v.id == voice.0)
+            .map(|v| {
+                v.params
+                    .iter()
+                    .map(|(id, ps)| (*id, ps.iter().map(|(name, _)| *name).collect()))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// Enforce [`max_voices`](Self::set_max_voices) by stealing oldest-first.
+    fn enforce_voice_cap(&mut self) {
+        if let Some(max) = self.max_voices {
+            while self.voices.len() > max {
+                self.voices.remove(0).teardown();
             }
-        };
-        apply(&self.params);
+        }
     }
 
     /// Every live, controllable `(node, [param names])` in the currently-playing

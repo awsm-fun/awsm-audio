@@ -17,11 +17,21 @@ uuid = { workspace = true }
 schemars = { workspace = true, optional = true }
 # Standard MIDI File parsing for the Note Sequencer (and Control Sequencer CC import).
 midly = { workspace = true }
+# Optional: a convenience loader for the editor's exported `project.toml`
+# (the `[library]`-wrapped document). Off by default to keep the crate
+# format-agnostic — consumers that want it opt in via the `toml` feature.
+toml = { workspace = true, optional = true }
 
 [features]
+# The project.toml loader (`project::from_toml_str`) is on by default — it's the
+# common path for any consumer loading a saved editor project. Opt out with
+# `default-features = false` to keep the crate fully format-agnostic.
+default = ["toml"]
 # Derive `schemars::JsonSchema` on the schema types (id newtypes get a hand-rolled
 # `"type":"string","format":"uuid"` schema instead of recursing into Uuid).
 schemars = ["dep:schemars"]
+# Enable `project::library_from_toml` / `project::from_toml_str` (pulls in `toml`).
+toml = ["dep:toml"]
 
 [dev-dependencies]
 # Format-agnostic schema: TOML is only used to exercise round-tripping in tests.
