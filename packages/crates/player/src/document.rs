@@ -112,11 +112,13 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
 
 use awsm_audio_schema::{
-    AssetId, AudioSource, ConnectionSink, ConnectionSource, Graph, NodeKind, SampleId, SampleKind,
-    SampleLibrary, WasmSource,
+    AssetId, AudioSource, ConnectionSink, ConnectionSource, Graph, NodeId, NodeKind, SampleId,
+    SampleKind, SampleLibrary, WasmSource,
 };
 
-use crate::{bounce, AudioClipPart, ControlLanePart, Player, SongVoiceSpec, TriggerPart};
+use crate::{
+    bounce, AudioClipPart, ControlLanePart, Player, SongVoiceSpec, TriggerPart, VoiceHandle,
+};
 
 /// Extra render time past a sequence loop length so note releases / reverb tails can
 /// ring out and be folded back across the loop seam when bouncing (mirrors the
@@ -513,9 +515,23 @@ impl Player {
     /// [`play_document`](Self::play_document) is synchronous. Idempotent: assets
     /// already registered are skipped, so it's cheap to call again after edits.
     ///
-    /// `Url`/`Path` asset sources are **not** fetched here (they need a network /
-    /// filesystem the player doesn't reach); rehydrate them to inline
-    /// `Encoded`/`Base64`/`Pcm` before calling — the editor's loader already does.
+    /// # ⚠️ Only *inline* assets are loaded — `Url`/`Path` are skipped
+    ///
+    /// This method does **no IO of its own**. It loads only assets whose bytes are
+    /// already inline in the document ([`AudioSource::Encoded`]/[`Pcm`](AudioSource::Pcm),
+    /// [`WasmSource::Base64`]). An asset sourced from a [`Url`](AudioSource::Url) or
+    /// [`Path`](AudioSource::Path) is **silently skipped** (with a `tracing::warn!`) —
+    /// the player reaches no network or filesystem — so a document referencing
+    /// on-disk/remote assets will play *silent* where those assets were. You have
+    /// three options:
+    ///
+    /// - rehydrate `Url`/`Path` sources to inline bytes before calling (the
+    ///   editor's directory loader does this), **or**
+    /// - call [`register_with_loader`](Self::register_with_loader) and supply a
+    ///   fetch closure, **or**
+    /// - load those assets yourself via the low-level path and
+    ///   [`store_module`](Self::store_module) / [`decode`](Self::decode) +
+    ///   [`store_buffer`](Self::store_buffer) (or [`store_pcm`](Self::store_pcm)).
     pub async fn register(&mut self, lib: &SampleLibrary) -> Result<()> {
         // ── Phase 0: load the generic worklet shim so AudioWorklet nodes can be
         // constructed (a worklet sound otherwise throws at play time). Best-effort.
@@ -623,6 +639,65 @@ impl Player {
         Ok(())
     }
 
+    /// Like [`register`](Self::register), but **fetch** each `Url`/`Path` asset
+    /// through the supplied `loader` instead of skipping it — so a document that
+    /// references on-disk or remote assets loads end-to-end without each consumer
+    /// reimplementing fetch → decode → compile.
+    ///
+    /// `loader` is called once per `Url`/`Path` source with that source string and
+    /// returns the raw asset bytes (the encoded audio file, or the `.wasm`
+    /// module). Resolution of relative paths / base URLs is the loader's business.
+    /// The fetched bytes are rehydrated inline and then handed to the normal
+    /// [`register`](Self::register) pipeline (concurrent decode + compile + bounce),
+    /// so inline assets in the same document load too — this is a superset of
+    /// `register`.
+    ///
+    /// ```ignore
+    /// # use awsm_audio_player::Player;
+    /// # use awsm_audio_schema::SampleLibrary;
+    /// # async fn demo(player: &mut Player, lib: &SampleLibrary, base: &str) -> anyhow::Result<()> {
+    /// let base = base.to_string();
+    /// player.register_with_loader(lib, |src| {
+    ///     let url = format!("{base}/{src}");
+    ///     async move {
+    ///         let resp = gloo_net::http::Request::get(&url).send().await
+    ///             .map_err(|e| anyhow::anyhow!("{e}"))?;
+    ///         Ok(resp.binary().await.map_err(|e| anyhow::anyhow!("{e}"))?)
+    ///     }
+    /// }).await?;
+    /// # Ok(()) }
+    /// ```
+    pub async fn register_with_loader<F, Fut>(
+        &mut self,
+        lib: &SampleLibrary,
+        loader: F,
+    ) -> Result<()>
+    where
+        F: Fn(String) -> Fut,
+        Fut: std::future::Future<Output = Result<Vec<u8>>>,
+    {
+        let b64 = base64::engine::general_purpose::STANDARD;
+        // Rehydrate Url/Path sources into a working copy, then defer to register.
+        let mut lib = lib.clone();
+        for asset in &mut lib.assets.buffers {
+            if let AudioSource::Url(src) | AudioSource::Path(src) = &asset.source {
+                let bytes = loader(src.clone())
+                    .await
+                    .map_err(|e| anyhow::anyhow!("load audio asset {}: {e}", asset.id))?;
+                asset.source = AudioSource::Encoded(b64.encode(&bytes));
+            }
+        }
+        for asset in &mut lib.assets.wasm_modules {
+            if let WasmSource::Url(src) | WasmSource::Path(src) = &asset.source {
+                let bytes = loader(src.clone())
+                    .await
+                    .map_err(|e| anyhow::anyhow!("load wasm asset {}: {e}", asset.id))?;
+                asset.source = WasmSource::Base64(b64.encode(&bytes));
+            }
+        }
+        self.register(&lib).await
+    }
+
     /// Build a [`BounceJob`](bounce::BounceJob) for Sound `id` from the document —
     /// the same shape the editor's `bounce_job_for` produces. `None` if the sample
     /// isn't a bounceable Sound.
@@ -713,6 +788,43 @@ impl Player {
         target: SampleId,
         opts: PlayOptions,
     ) -> Result<Playback> {
+        self.play_document_with(lib, target, opts, &[])
+    }
+
+    /// As [`play_document`](Self::play_document), but apply per-trigger param
+    /// `overrides` — `(node, param_name, value)` — as base values **at graph-build
+    /// time**, before any source starts, so the trigger is correct from sample 0
+    /// (see [`play_with`](Self::play_with)). The node ids are read from the
+    /// target's graph (`lib.sample(target).graph`); discover the controllable ones
+    /// with [`control_surface`].
+    ///
+    /// This is the right call for a parameterized one-shot — an impact whose
+    /// intensity, hardness, and world position differ every trigger:
+    ///
+    /// ```no_run
+    /// # use awsm_audio_player::{Player, document::PlayOptions};
+    /// # use awsm_audio_schema::{NodeId, SampleLibrary, SampleId};
+    /// # fn demo(player: &mut Player, lib: &SampleLibrary, hit: SampleId,
+    /// #         level: NodeId, cutoff: NodeId, panner: NodeId) -> anyhow::Result<()> {
+    /// player.play_document_with(lib, hit, PlayOptions::default(), &[
+    ///     (level, "gain", 0.7),            // impact intensity
+    ///     (cutoff, "frequency", 4200.0),   // surface hardness
+    ///     (panner, "positionX", 2.5),      // where it happened
+    ///     (panner, "positionZ", -1.0),
+    /// ])?;
+    /// # Ok(()) }
+    /// ```
+    ///
+    /// (Overrides apply to Sounds and sequence graphs, which build a node graph;
+    /// Arrangements schedule pre-bounced clips and have no live graph params, so
+    /// overrides are ignored there.)
+    pub fn play_document_with(
+        &mut self,
+        lib: &SampleLibrary,
+        target: SampleId,
+        opts: PlayOptions,
+        overrides: &[(NodeId, &str, f32)],
+    ) -> Result<Playback> {
         self.set_master_gain(1.0);
         let kind = classify(lib, target);
         match kind {
@@ -722,7 +834,7 @@ impl Player {
                 // `duration_secs` (from `measure_sound`) and watch `ended()`, then
                 // free it or re-call `play_document` to loop.
                 let graph = awsm_audio_schema::flatten(lib, target);
-                self.play(&graph, false)?;
+                self.play_with(&graph, false, overrides)?;
                 Ok(Playback {
                     kind,
                     looping: false,
@@ -735,7 +847,7 @@ impl Player {
             }
             PlayKind::Sequence => {
                 let sp = sequence_parts(lib, target);
-                self.play_arrangement(&sp.graph, opts.looping)?;
+                self.play_arrangement_with(&sp.graph, opts.looping, overrides)?;
                 let at = self.current_time() + 0.1;
                 self.schedule_triggers(&sp.triggers, at)?;
                 self.schedule_control(&sp.control, at);
@@ -782,6 +894,49 @@ impl Player {
         }
     }
 
+    /// Play a document **Sound** as an independent concurrent
+    /// [voice](Self::play_voice) — without stopping anything else — returning a
+    /// [`VoiceHandle`]. This is the document-level entry point for game audio: one
+    /// `Player`, one `AudioContext`, many simultaneous sounds (a sustaining drone
+    /// *and* re-triggered one-shots), instead of a `Player`-per-sound.
+    ///
+    /// `overrides` parameterize the trigger from sample 0 (see
+    /// [`play_document_with`](Self::play_document_with)). Assets must be
+    /// [`register`](Self::register)ed first.
+    ///
+    /// Only **Sounds** play as voices (a Sound is a self-contained patch). Sequences
+    /// and Arrangements drive the `Player`'s single shared scheduler/transport, so
+    /// play them with [`play_document`](Self::play_document); calling this on one
+    /// returns an error.
+    ///
+    /// ```no_run
+    /// # use awsm_audio_player::{Player, document::PlayOptions};
+    /// # use awsm_audio_schema::{SampleLibrary, SampleId};
+    /// # fn demo(player: &mut Player, lib: &SampleLibrary, roll: SampleId, hit: SampleId) -> anyhow::Result<()> {
+    /// let _roll = player.play_document_voice(lib, roll, PlayOptions { looping: true, ..Default::default() }, &[])?;
+    /// let knock = player.play_document_voice(lib, hit, PlayOptions::default(), &[])?; // doesn't cut the roll
+    /// // … when the knock is done: player.stop_voice(knock);
+    /// # Ok(()) }
+    /// ```
+    pub fn play_document_voice(
+        &mut self,
+        lib: &SampleLibrary,
+        target: SampleId,
+        opts: PlayOptions,
+        overrides: &[(NodeId, &str, f32)],
+    ) -> Result<VoiceHandle> {
+        match classify(lib, target) {
+            PlayKind::Sound => {
+                let graph = awsm_audio_schema::flatten(lib, target);
+                self.play_voice_with(&graph, opts.looping, overrides)
+            }
+            other => Err(anyhow::anyhow!(
+                "play_document_voice: {target} is a {other:?}, not a Sound — \
+                 use play_document for sequences/arrangements"
+            )),
+        }
+    }
+
     /// Re-arm a looping playback's next pass when its boundary is near. Call this
     /// periodically (e.g. from `requestAnimationFrame`) with the current context
     /// time ([`current_time`](Self::current_time)); it schedules the next loop of
@@ -818,6 +973,111 @@ impl Player {
             pb.next_at = start + secs;
         }
         Ok(())
+    }
+}
+
+/// One controllable node in a sample's graph: its id, a short kind label, and the
+/// live param names [`set_param_live`](Player::set_param_live) /
+/// [`play_document_with`](Player::play_document_with) accept for it. Returned by
+/// [`control_surface`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct ControlTarget {
+    /// The node's [`NodeId`] in the sample's graph.
+    pub node: NodeId,
+    /// A short, stable kind label (`"Oscillator"`, `"Panner"`, `"AudioWorklet"`, …).
+    pub kind: &'static str,
+    /// The WebAudio param names that are live-controllable on this node. For an
+    /// [`AudioWorklet`](NodeKind::AudioWorklet) these are the module's declared
+    /// param names; for native nodes they're the platform names (`"frequency"`,
+    /// `"positionX"`, …).
+    pub params: Vec<String>,
+}
+
+/// The **controllable surface** of a graph *without playing it*: every node that
+/// exposes a live-controllable param, paired with that node's kind and param
+/// names. This is the pre-play companion to [`Player::live_params`] (which needs a
+/// playing graph) — wire up sliders / bind game state to `(node, param)` pairs
+/// ahead of the first trigger, instead of hard-coding node ids or rescanning the
+/// document by hand.
+///
+/// The param names returned here are exactly what
+/// [`set_param_live`](Player::set_param_live),
+/// [`play_document_with`](Player::play_document_with), and
+/// [`play_with`](Player::play_with) accept for each node.
+///
+/// ```no_run
+/// # use awsm_audio_player::document::control_surface;
+/// # use awsm_audio_schema::{SampleLibrary, SampleId};
+/// # fn demo(lib: &SampleLibrary, target: SampleId) {
+/// if let Some(sample) = lib.sample(target) {
+///     for t in control_surface(&sample.graph) {
+///         for param in &t.params {
+///             // e.g. create a labeled control: format!("{} · {}", t.kind, param)
+///         }
+///     }
+/// }
+/// # }
+/// ```
+pub fn control_surface(graph: &Graph) -> Vec<ControlTarget> {
+    graph
+        .nodes
+        .iter()
+        .filter_map(|n| {
+            let (kind, params) = controllable_params(&n.kind);
+            (!params.is_empty()).then_some(ControlTarget {
+                node: n.id,
+                kind,
+                params,
+            })
+        })
+        .collect()
+}
+
+/// The kind label + live-controllable param names for one [`NodeKind`].
+///
+/// Mirrors the param vectors built in `build::build_node` — keep the two in sync.
+fn controllable_params(kind: &NodeKind) -> (&'static str, Vec<String>) {
+    fn names(items: &[&str]) -> Vec<String> {
+        items.iter().map(|s| s.to_string()).collect()
+    }
+    match kind {
+        NodeKind::Oscillator(_) => ("Oscillator", names(&["frequency", "detune"])),
+        NodeKind::ConstantSource(_) => ("ConstantSource", names(&["offset"])),
+        NodeKind::AudioBufferSource(_) => ("AudioBufferSource", names(&["playbackRate", "detune"])),
+        NodeKind::Gain(_) => ("Gain", names(&["gain"])),
+        NodeKind::BiquadFilter(_) => ("BiquadFilter", names(&["frequency", "detune", "Q", "gain"])),
+        NodeKind::Delay(_) => ("Delay", names(&["delayTime"])),
+        NodeKind::DynamicsCompressor(_) => (
+            "DynamicsCompressor",
+            names(&["threshold", "knee", "ratio", "attack", "release"]),
+        ),
+        NodeKind::StereoPanner(_) => ("StereoPanner", names(&["pan"])),
+        NodeKind::Panner(_) => (
+            "Panner",
+            names(&[
+                "positionX",
+                "positionY",
+                "positionZ",
+                "orientationX",
+                "orientationY",
+                "orientationZ",
+            ]),
+        ),
+        NodeKind::Output(_) => ("Output", names(&["gain"])),
+        NodeKind::SpatialOutput(_) => (
+            "SpatialOutput",
+            names(&["gain", "positionX", "positionY", "positionZ"]),
+        ),
+        NodeKind::AudioWorklet(w) => (
+            "AudioWorklet",
+            w.parameters
+                .iter()
+                .take(crate::worklet::PARAM_BANK)
+                .map(|p| p.name.0.clone())
+                .collect(),
+        ),
+        // Nodes with no live-automatable params (sources/sinks/routers).
+        _ => ("", Vec::new()),
     }
 }
 

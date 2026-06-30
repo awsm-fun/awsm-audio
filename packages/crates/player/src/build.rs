@@ -10,10 +10,52 @@
 use anyhow::Result;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
+use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{
     AudioBuffer, AudioNode, AudioParam, AudioScheduledSourceNode, BaseAudioContext, GainNode,
 };
+
+#[wasm_bindgen]
+extern "C" {
+    // A re-declaration of `AudioBuffer` so we can bind `copyToChannel` to take an
+    // *owned* `Float32Array` rather than web_sys's zero-copy view over wasm
+    // memory (web_sys only exposes the slice-based, view-creating form). We
+    // `unchecked_ref` a real `AudioBuffer` into this. See [`copy_to_channel`].
+    #[wasm_bindgen(js_name = AudioBuffer)]
+    type AudioBufferExt;
+    #[wasm_bindgen(method, catch, js_name = copyToChannel)]
+    fn copy_to_channel_array(
+        this: &AudioBufferExt,
+        source: &js_sys::Float32Array,
+        channel_number: i32,
+    ) -> Result<(), JsValue>;
+}
+
+/// Write `data` into channel `ch` of `buffer`, going through an owned (non-shared)
+/// `Float32Array`.
+///
+/// web_sys's slice-based [`AudioBuffer::copy_to_channel`](web_sys::AudioBuffer::copy_to_channel)
+/// hands WebAudio a `Float32Array` that *views* wasm linear memory. On a
+/// wasm-threads build (`-C target-feature=+atomics` / `--shared-memory` /
+/// `--import-memory`) that memory is a `SharedArrayBuffer`, and the WebAudio spec
+/// forbids `copyToChannel` from a shared array — it throws
+/// `TypeError: ... must not be shared`, which silently kills every noise/PCM
+/// sound in a threaded app. Copying the samples into a fresh JS-heap
+/// `Float32Array` first sidesteps that, and the copy is cheap relative to
+/// correctness.
+///
+/// (Other wasm→WebAudio boundaries are already copy-safe: `decodeAudioData` and
+/// `WebAssembly.compile` are fed freshly-allocated `Uint8Array`s in
+/// `document.rs`, and `Float32Array::from` / `Float64Array::from` allocate.
+/// `copyToChannel` is the one boundary that takes a borrowed view.)
+pub(crate) fn copy_to_channel(buffer: &AudioBuffer, data: &[f32], ch: i32) -> Result<(), JsValue> {
+    let arr = js_sys::Float32Array::new_with_length(data.len() as u32);
+    arr.copy_from(data);
+    buffer
+        .unchecked_ref::<AudioBufferExt>()
+        .copy_to_channel_array(&arr, ch)
+}
 
 use awsm_audio_schema::{
     AssetId, AudioParam as SchemaParam, AutomationEvent, ConnectionSink, ConnectionSource, Graph,
@@ -319,9 +361,7 @@ fn build_node(
                     .wrapping_add(u64::from(ch).wrapping_mul(0x9E37_79B9_7F4A_7C15));
                 let data =
                     crate::noise::generate(nz.flavor, seed, len, sr, nz.density, nz.gaussian);
-                buffer
-                    .copy_to_channel(&data, ch as i32)
-                    .map_err(|e| js_err("noise copy", e))?;
+                copy_to_channel(&buffer, &data, ch as i32).map_err(|e| js_err("noise copy", e))?;
             }
             let n = ctx
                 .create_buffer_source()
@@ -786,9 +826,7 @@ fn default_impulse(ctx: &BaseAudioContext, seconds: f32) -> Result<AudioBuffer> 
             s * (-6.0 * t).exp()
         })
         .collect();
-        buffer
-            .copy_to_channel(&data, ch as i32)
-            .map_err(|e| js_err("ir copy", e))?;
+        copy_to_channel(&buffer, &data, ch as i32).map_err(|e| js_err("ir copy", e))?;
     }
     Ok(buffer)
 }
