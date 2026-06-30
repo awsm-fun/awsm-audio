@@ -18,43 +18,50 @@ use web_sys::{
 
 #[wasm_bindgen]
 extern "C" {
-    // A re-declaration of `AudioBuffer` so we can bind `copyToChannel` to take an
-    // *owned* `Float32Array` rather than web_sys's zero-copy view over wasm
-    // memory (web_sys only exposes the slice-based, view-creating form). We
-    // `unchecked_ref` a real `AudioBuffer` into this. See [`copy_to_channel`].
+    // A re-declaration of `AudioBuffer` so we can bind `getChannelData`, which
+    // (unlike web_sys's `get_channel_data`, which copies the channel out into a
+    // `Vec<f32>`) returns the live `Float32Array` aliasing the buffer's own
+    // channel storage — what we write *into*. We `unchecked_ref` a real
+    // `AudioBuffer` into this. See [`copy_to_channel`].
     #[wasm_bindgen(js_name = AudioBuffer)]
     type AudioBufferExt;
-    #[wasm_bindgen(method, catch, js_name = copyToChannel)]
-    fn copy_to_channel_array(
+    #[wasm_bindgen(method, catch, js_name = getChannelData)]
+    fn get_channel_data_array(
         this: &AudioBufferExt,
-        source: &js_sys::Float32Array,
         channel_number: i32,
-    ) -> Result<(), JsValue>;
+    ) -> Result<js_sys::Float32Array, JsValue>;
 }
 
-/// Write `data` into channel `ch` of `buffer`, going through an owned (non-shared)
-/// `Float32Array`.
+/// Write `data` into channel `ch` of `buffer`.
 ///
-/// web_sys's slice-based [`AudioBuffer::copy_to_channel`](web_sys::AudioBuffer::copy_to_channel)
-/// hands WebAudio a `Float32Array` that *views* wasm linear memory. On a
-/// wasm-threads build (`-C target-feature=+atomics` / `--shared-memory` /
-/// `--import-memory`) that memory is a `SharedArrayBuffer`, and the WebAudio spec
+/// We deliberately avoid web_sys's slice-based
+/// [`AudioBuffer::copy_to_channel`](web_sys::AudioBuffer::copy_to_channel): it
+/// hands `copyToChannel` a `Float32Array` that *views* wasm linear memory, and on
+/// a wasm-threads build (`-C target-feature=+atomics` / `--shared-memory` /
+/// `--import-memory`) that memory is a `SharedArrayBuffer`. The WebAudio spec
 /// forbids `copyToChannel` from a shared array — it throws
-/// `TypeError: ... must not be shared`, which silently kills every noise/PCM
-/// sound in a threaded app. Copying the samples into a fresh JS-heap
-/// `Float32Array` first sidesteps that, and the copy is cheap relative to
-/// correctness.
+/// `TypeError: ... must not be shared`, silently killing every noise/PCM sound in
+/// a threaded app.
+///
+/// Instead we copy *straight into* the buffer's own channel storage:
+/// `getChannelData` returns the live `Float32Array` aliasing it (engine-owned, so
+/// non-shared), and [`copy_from`](js_sys::Float32Array::copy_from) memcpys our
+/// samples in via `TypedArray.prototype.set`. Only `copyToChannel`/
+/// `copyFromChannel` forbid a *shared* argument; `set` reading from a shared
+/// source is fine, and the destination is non-shared — so no intermediate
+/// allocation and a single copy (vs. an owned temp array + two copies).
 ///
 /// (Other wasm→WebAudio boundaries are already copy-safe: `decodeAudioData` and
 /// `WebAssembly.compile` are fed freshly-allocated `Uint8Array`s in
-/// `document.rs`, and `Float32Array::from` / `Float64Array::from` allocate.
-/// `copyToChannel` is the one boundary that takes a borrowed view.)
+/// `document.rs`, and `Float32Array::from` / `Float64Array::from` allocate.)
 pub(crate) fn copy_to_channel(buffer: &AudioBuffer, data: &[f32], ch: i32) -> Result<(), JsValue> {
-    let arr = js_sys::Float32Array::new_with_length(data.len() as u32);
-    arr.copy_from(data);
-    buffer
+    // The channel buffer is sized to the longest channel; `data` is never longer
+    // (so `copy_from` can't overflow), and any tail stays zero-filled.
+    let dst = buffer
         .unchecked_ref::<AudioBufferExt>()
-        .copy_to_channel_array(&arr, ch)
+        .get_channel_data_array(ch)?;
+    dst.copy_from(data);
+    Ok(())
 }
 
 use awsm_audio_schema::{
