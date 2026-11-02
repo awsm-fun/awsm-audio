@@ -308,6 +308,60 @@ impl EditorController {
         Ok(())
     }
 
+    /// The project in directory form, for the MCP server to write to a real
+    /// path: the same `project.toml` and `assets/` files [`save_to_dir`](Self::save_to_dir)
+    /// writes to a picked folder.
+    pub fn project_files(&self) -> Result<awsm_audio_editor_protocol::ProjectDirFiles, String> {
+        use base64::Engine as _;
+        let b64 = base64::engine::general_purpose::STANDARD;
+        let (project, files) = self.project_dir_files();
+        let project_toml = toml::to_string_pretty(&project).map_err(|e| e.to_string())?;
+        Ok(awsm_audio_editor_protocol::ProjectDirFiles {
+            project_toml,
+            files: files
+                .into_iter()
+                .map(|(path, bytes)| awsm_audio_editor_protocol::ProjectFile {
+                    path,
+                    base64: b64.encode(bytes),
+                })
+                .collect(),
+        })
+    }
+
+    /// Replace the open project with one in directory form, read from a real
+    /// path by the MCP server: the in-memory twin of [`load_from_dir`](Self::load_from_dir).
+    pub fn open_project_files(
+        &self,
+        dir: awsm_audio_editor_protocol::ProjectDirFiles,
+    ) -> Result<(), String> {
+        use awsm_audio_schema::{AudioSource, WasmSource};
+        let files: std::collections::HashMap<String, String> = dir
+            .files
+            .into_iter()
+            .map(|file| (file.path, file.base64))
+            .collect();
+        let file = |path: &str| {
+            files
+                .get(path)
+                .cloned()
+                .ok_or_else(|| format!("project.toml names {path}, which isn't in the project"))
+        };
+        let mut project: EditorProject =
+            toml::from_str(&dir.project_toml).map_err(|e| format!("parse project.toml: {e}"))?;
+        for asset in &mut project.library.assets.buffers {
+            if let AudioSource::Path(path) = &asset.source {
+                asset.source = AudioSource::Encoded(file(path)?);
+            }
+        }
+        for asset in &mut project.library.assets.wasm_modules {
+            if let WasmSource::Path(path) = &asset.source {
+                asset.source = WasmSource::Base64(file(path)?);
+            }
+        }
+        self.open_project(project);
+        Ok(())
+    }
+
     /// Full snapshot including editor-only view-state.
     pub fn snapshot(&self) -> EditorSnapshot {
         let layout = self

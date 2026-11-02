@@ -411,6 +411,12 @@ pub struct ExportSampleParams {
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct ProjectDirParams {
+    /// The project directory: it holds (or will hold) `project.toml` and `assets/`.
+    pub path: String,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct ImportSampleParams {
     /// Path to a `.toml` written by export_sample (or any SampleLibrary TOML).
     pub path: String,
@@ -2837,6 +2843,56 @@ impl EditorMcp {
     }
 
     #[tool(
+        description = "Save the open project to a directory on disk: `project.toml` \
+        plus its `assets/` files, exactly what the editor's Save writes to a picked \
+        folder (and what awsm-audio-player loads). Creates the directory if needed. \
+        Files of an older save that the project no longer names are removed from \
+        `assets/`; nothing else in the directory is touched. Returns the files written."
+    )]
+    async fn save_project(
+        &self,
+        Parameters(p): Parameters<ProjectDirParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let dir = match self.req(Request::ProjectFiles).await? {
+            Response::ProjectFiles(dir) => dir,
+            Response::Err(e) => return Err(McpError::internal_error(e, None)),
+            other => return Err(unexpected(other)),
+        };
+        let written = write_project_dir(std::path::Path::new(&p.path), &dir)
+            .map_err(|e| McpError::internal_error(e, None))?;
+        Ok(text(
+            serde_json::json!({
+                "ok": true,
+                "path": p.path,
+                "files": written,
+            })
+            .to_string(),
+        ))
+    }
+
+    #[tool(
+        description = "Open a project from a directory on disk (`project.toml` plus \
+        the `assets/` files it names), replacing the open project — exactly what the \
+        editor's Load does with a picked folder. Save first if the open project \
+        matters."
+    )]
+    async fn open_project(
+        &self,
+        Parameters(p): Parameters<ProjectDirParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let dir = read_project_dir(std::path::Path::new(&p.path))
+            .map_err(|e| McpError::invalid_params(e, None))?;
+        let files = dir.files.len();
+        match self.req(Request::OpenProjectFiles(dir)).await? {
+            Response::Ok => Ok(text(
+                serde_json::json!({ "ok": true, "path": p.path, "asset_files": files }).to_string(),
+            )),
+            Response::Err(e) => Err(McpError::internal_error(e, None)),
+            other => Err(unexpected(other)),
+        }
+    }
+
+    #[tool(
         description = "Render a Sound/Arrangement offline and write the `.wav` to \
         a path you choose — the durable form of render_wav (which writes a temp \
         file). Omit `sample` to export the project root. A directory path gets \
@@ -4853,6 +4909,133 @@ see it (and why) before rendering:
   element (`media_element_source`) makes a Sound unbounceable; `get_render_plan`
   reports this. Replace them with an `audio_buffer_source` + `load_audio` to bounce.
 "#;
+
+/// Write a project in directory form under `dir`, pruning stale `assets/`
+/// files. Returns the project-relative paths written.
+fn write_project_dir(
+    dir: &std::path::Path,
+    project: &awsm_audio_editor_protocol::ProjectDirFiles,
+) -> Result<Vec<String>, String> {
+    let assets = dir.join("assets");
+    std::fs::create_dir_all(&assets).map_err(|e| format!("create {}: {e}", assets.display()))?;
+    let mut written = vec!["project.toml".to_string()];
+    let mut keep = std::collections::HashSet::new();
+    for file in &project.files {
+        let rel = std::path::Path::new(&file.path);
+        if rel.is_absolute()
+            || rel
+                .components()
+                .any(|c| matches!(c, std::path::Component::ParentDir))
+        {
+            return Err(format!(
+                "refusing to write outside the project: {}",
+                file.path
+            ));
+        }
+        let bytes = STANDARD
+            .decode(&file.base64)
+            .map_err(|e| format!("decode {}: {e}", file.path))?;
+        let dest = dir.join(rel);
+        if let Some(parent) = dest.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("create {}: {e}", parent.display()))?;
+        }
+        std::fs::write(&dest, bytes).map_err(|e| format!("write {}: {e}", dest.display()))?;
+        keep.insert(dest);
+        written.push(file.path.clone());
+    }
+    let toml_path = dir.join("project.toml");
+    std::fs::write(&toml_path, &project.project_toml)
+        .map_err(|e| format!("write {}: {e}", toml_path.display()))?;
+    for entry in
+        std::fs::read_dir(&assets).map_err(|e| format!("read {}: {e}", assets.display()))?
+    {
+        let path = entry.map_err(|e| e.to_string())?.path();
+        // Only prune what the project no longer names at all: an asset the
+        // editor kept as a path reference isn't in `files`, but is still used.
+        let named = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .is_some_and(|n| project.project_toml.contains(&format!("assets/{n}")));
+        if path.is_file() && !keep.contains(&path) && !named {
+            std::fs::remove_file(&path).map_err(|e| format!("remove {}: {e}", path.display()))?;
+        }
+    }
+    Ok(written)
+}
+
+/// Read a project in directory form: `project.toml` and every file under
+/// `assets/`.
+fn read_project_dir(
+    dir: &std::path::Path,
+) -> Result<awsm_audio_editor_protocol::ProjectDirFiles, String> {
+    let toml_path = dir.join("project.toml");
+    let project_toml = std::fs::read_to_string(&toml_path)
+        .map_err(|e| format!("read {}: {e}", toml_path.display()))?;
+    let mut files = Vec::new();
+    let assets = dir.join("assets");
+    if assets.is_dir() {
+        for entry in
+            std::fs::read_dir(&assets).map_err(|e| format!("read {}: {e}", assets.display()))?
+        {
+            let path = entry.map_err(|e| e.to_string())?.path();
+            if !path.is_file() {
+                continue;
+            }
+            let name = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or_default();
+            if name.starts_with('.') {
+                continue;
+            }
+            let bytes =
+                std::fs::read(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
+            files.push(awsm_audio_editor_protocol::ProjectFile {
+                path: format!("assets/{name}"),
+                base64: STANDARD.encode(bytes),
+            });
+        }
+    }
+    Ok(awsm_audio_editor_protocol::ProjectDirFiles {
+        project_toml,
+        files,
+    })
+}
+
+#[cfg(test)]
+mod project_dir_tests {
+    use super::*;
+
+    #[test]
+    fn writes_reads_back_and_prunes_stale_assets() {
+        let dir = std::env::temp_dir().join(format!("awsm-audio-project-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let project = |files: &[(&str, &[u8])]| awsm_audio_editor_protocol::ProjectDirFiles {
+            project_toml: "[library]\n".into(),
+            files: files
+                .iter()
+                .map(|(path, bytes)| awsm_audio_editor_protocol::ProjectFile {
+                    path: (*path).into(),
+                    base64: STANDARD.encode(bytes),
+                })
+                .collect(),
+        };
+        write_project_dir(
+            &dir,
+            &project(&[("assets/a.wav", b"a"), ("assets/b.wasm", b"b")]),
+        )
+        .unwrap();
+        write_project_dir(&dir, &project(&[("assets/a.wav", b"A")])).unwrap();
+        let read = read_project_dir(&dir).unwrap();
+        assert_eq!(read.project_toml, "[library]\n");
+        assert_eq!(read.files.len(), 1);
+        assert_eq!(read.files[0].path, "assets/a.wav");
+        assert_eq!(STANDARD.decode(&read.files[0].base64).unwrap(), b"A");
+        assert!(write_project_dir(&dir, &project(&[("../escape", b"x")])).is_err());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+}
 
 fn text(s: impl Into<String>) -> CallToolResult {
     CallToolResult::success(vec![Content::text(s.into())])

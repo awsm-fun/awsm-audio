@@ -309,6 +309,11 @@ embedded WASM modules + embedded audio clips — plus editor layout + camera).
 **Open** restores it exactly; a bare `SampleLibrary` (e.g. an exported example)
 also opens and auto-lays-out. **Export** renders the graph offline to a WAV.
 
+The editor's Save and Open use a folder picked in the browser. An agent does
+the same with real paths through the MCP: `save_project {path}` writes
+`project.toml` plus `assets/` to a directory (the layout `awsm-audio-player`
+loads), and `open_project {path}` opens one, replacing the open project.
+
 ## Status
 
 Verification is preview-driven (an internal headless browser). CI runs
