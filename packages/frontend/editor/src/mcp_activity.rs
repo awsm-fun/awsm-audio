@@ -288,6 +288,8 @@ fn describe(req: &Request) -> Option<ActionInfo> {
             *node,
         ),
         Request::ImportSamples { .. } => plain("Importing samples"),
+        Request::ProjectFiles => plain("Saving the project"),
+        Request::OpenProjectFiles(_) => plain("Opening a project"),
         Request::Query(q) => describe_query(q),
     }
 }

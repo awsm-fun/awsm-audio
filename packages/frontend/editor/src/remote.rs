@@ -489,6 +489,14 @@ fn dispatch(req: Request) -> Response {
                 Err(e) => Response::Err(e),
             }
         }
+        Request::ProjectFiles => match ctrl.project_files() {
+            Ok(files) => Response::ProjectFiles(files),
+            Err(e) => Response::Err(e),
+        },
+        Request::OpenProjectFiles(files) => match ctrl.open_project_files(files) {
+            Ok(()) => Response::Ok,
+            Err(e) => Response::Err(e),
+        },
         Request::RenderWav { .. } | Request::AttachWasm { .. } | Request::LoadAudio { .. } => {
             unreachable!("RenderWav/AttachWasm/LoadAudio are served on the async branch")
         }

@@ -78,6 +78,31 @@ pub enum Request {
     ImportSamples {
         library_toml: String,
     },
+    /// Report the whole project in its directory form: `project.toml` plus
+    /// the `assets/` files it names — exactly what the editor's Save writes to
+    /// a picked folder. The MCP server writes it to a real path.
+    ProjectFiles,
+    /// Replace the open project with one in directory form — exactly what the
+    /// editor's Load reads from a picked folder. The MCP server reads it from
+    /// a real path. Path-sourced assets are resolved from `files`.
+    OpenProjectFiles(ProjectDirFiles),
+}
+
+/// A project in directory form: `project.toml` and its `assets/` files.
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ProjectDirFiles {
+    pub project_toml: String,
+    pub files: Vec<ProjectFile>,
+}
+
+/// One file of a project directory, by its project-relative path.
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectFile {
+    /// Project-relative, e.g. `assets/<id>.wav`.
+    pub path: String,
+    pub base64: String,
 }
 
 /// serde helper: skip serializing a `false` flag (keeps default wire shapes
@@ -198,6 +223,8 @@ pub enum Response {
     /// Samples were merged into the project (see [`Request::ImportSamples`]) —
     /// one entry per imported sample.
     Imported(Vec<crate::SampleInfo>),
+    /// The project in directory form (see [`Request::ProjectFiles`]).
+    ProjectFiles(ProjectDirFiles),
     /// The request failed; the string is a human-readable reason.
     Err(String),
 }
